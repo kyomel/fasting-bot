@@ -1,36 +1,61 @@
 package main
 
 import (
-	"context"
-	"log/slog"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/kyomel/fasting-bot/internal/app"
+	"fasting-bot/internal/config"
+	"fasting-bot/internal/delivery/whatsapp"
+	"fasting-bot/internal/infrastructure/database"
+	waInfra "fasting-bot/internal/infrastructure/whatsapp"
+	"fasting-bot/internal/infrastructure/persistence"
+	"fasting-bot/internal/usecase"
 )
 
 func main() {
-	os.Exit(run())
-}
+	fmt.Println("🤖 Fasting Bot Starting...")
+	fmt.Printf("Bot Number: %s\n", config.BotNumber)
+	fmt.Printf("Admin Number: %s\n", config.AdminNumber)
+	fmt.Printf("Group Name: %s\n", config.GroupName)
 
-func run() int {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	application, err := app.New(ctx, logger)
+	db, err := database.New()
 	if err != nil {
-		logger.Error("startup failed", "error", err)
-		return 1
+		fmt.Printf("❌ Failed to initialize database: %v\n", err)
+		os.Exit(1)
 	}
-	defer application.Close()
+	defer db.Close()
+	fmt.Println("✅ Database initialized")
 
-	if err := application.Run(ctx); err != nil {
-		logger.Error("application stopped with error", "error", err)
-		return 1
+	userRepo := persistence.NewUserRepository(db.Conn)
+	scheduleRepo := persistence.NewScheduleRepository(db.Conn)
+	notificationRepo := persistence.NewNotificationRepository(db.Conn)
+
+	fastingUsecase := usecase.NewFastingUsecase(userRepo, scheduleRepo, notificationRepo)
+
+	waClient, err := waInfra.NewClient()
+	if err != nil {
+		fmt.Printf("❌ Failed to initialize WhatsApp client: %v\n", err)
+		os.Exit(1)
 	}
 
-	return 0
+	handler := whatsapp.NewCommandHandler(waClient.WA, fastingUsecase)
+	waClient.WA.AddEventHandler(handler.HandleEvent)
+
+	notifier := waInfra.NewNotifier(waClient.WA)
+	scheduler := whatsapp.NewScheduler(scheduleRepo, notifier)
+	scheduler.Start()
+	defer scheduler.Stop()
+	fmt.Println("✅ Scheduler started")
+
+	fmt.Println("\n🚀 Bot is running! Scan the QR code above to login.")
+	fmt.Println("Press Ctrl+C to exit.")
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+
+	fmt.Println("\n👋 Shutting down bot...")
+	waClient.Disconnect()
 }
