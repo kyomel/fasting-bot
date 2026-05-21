@@ -51,6 +51,24 @@ func NewClient() (*Client, error) {
 				fmt.Println("\n📲 Scan this QR code with WhatsApp:")
 				fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
 				fmt.Println()
+				
+				// Save QR to file for easy viewing
+				qrFile, err := os.Create("/opt/fasting-bot/data/qr-code.txt")
+				if err == nil {
+					fmt.Fprintf(qrFile, "Fasting Bot WhatsApp QR Code\n")
+					fmt.Fprintf(qrFile, "Scan dengan: WhatsApp → Settings → Linked Devices → Link a Device\n\n")
+					qrterminal.GenerateWithConfig(evt.Code, qrterminal.Config{
+						Level:     qrterminal.L,
+						Writer:    qrFile,
+						BlackChar: qrterminal.WHITE,
+						WhiteChar: qrterminal.BLACK,
+						QuietZone: 2,
+					})
+					qrFile.Close()
+					fmt.Println("💾 QR code juga disimpan di: /opt/fasting-bot/data/qr-code.txt")
+					fmt.Println("   Download: scp root@103.169.206.19:/opt/fasting-bot/data/qr-code.txt ./qr-code.txt")
+				}
+				
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
 				fmt.Println()
 			} else if evt.Event == "timeout" {
