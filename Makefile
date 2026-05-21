@@ -19,6 +19,10 @@ build: ## Build the application binary.
 	@mkdir -p $(BIN_DIR)
 	@go build -o $(BIN) $(CMD)
 
+build-linux: ## Build for Linux deployment (cross-compile).
+	@mkdir -p $(BIN_DIR)
+	@CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/$(APP_NAME)-linux $(CMD)
+
 test: ## Run package tests.
 	@go test ./...
 
