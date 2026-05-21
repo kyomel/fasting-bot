@@ -9,12 +9,6 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 - 🗄️ Database SQLite (ringan, tanpa server)
 - 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /status, /buka
 
-## Nomor Bot
-
-- **Bot:** +6285111334509
-- **Admin:** +6282227026082
-- **Grup:** Fasting Group
-
 ## Struktur Project (Clean Architecture)
 
 ```text
