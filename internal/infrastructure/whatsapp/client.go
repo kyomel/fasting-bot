@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"fasting-bot/internal/config"
 
@@ -45,51 +46,63 @@ func NewClient() (*Client, error) {
 		}
 
 		phoneNumber := strings.TrimPrefix(config.BotNumber, "+")
-		fmt.Println("🔄 Method 1: Phone Number Pairing")
-		fmt.Println("   Requesting pairing code untuk nomor:", config.BotNumber)
 		
-		pairCode, err := client.PairPhone(context.Background(), phoneNumber, true, whatsmeow.PairClientChrome, "Fasting Bot")
-		if err == nil {
-			fmt.Println("✅ Pairing code generated!")
-			fmt.Println()
-			fmt.Println("📱 CARA MENGGUNAKAN PHONE PAIRING:")
-			fmt.Println("   1. Buka WhatsApp di HP")
-			fmt.Println("   2. Settings → Linked Devices → Link a Device")
-			fmt.Println("   3. Pilih 'Link with phone number instead'")
-			fmt.Println("   4. Masukkan kode:", pairCode)
-			fmt.Println()
-			fmt.Println("⏱️  Kode expired dalam 60 detik!")
-			
-			codeFile, _ := os.Create("/opt/fasting-bot/data/pairing-code.txt")
-			if codeFile != nil {
-				fmt.Fprintf(codeFile, "Fasting Bot WhatsApp Pairing Code\n")
-				fmt.Fprintf(codeFile, "Phone: %s\n", config.BotNumber)
-				fmt.Fprintf(codeFile, "Code: %s\n\n", pairCode)
-				fmt.Fprintf(codeFile, "Cara menggunakan:\n")
-				fmt.Fprintf(codeFile, "1. Buka WhatsApp di HP\n")
-				fmt.Fprintf(codeFile, "2. Settings → Linked Devices → Link a Device\n")
-				fmt.Fprintf(codeFile, "3. Pilih 'Link with phone number instead'\n")
-				fmt.Fprintf(codeFile, "4. Masukkan kode: %s\n", pairCode)
-				codeFile.Close()
-				fmt.Println("💾 Pairing code disimpan di: /opt/fasting-bot/data/pairing-code.txt")
+		for attempt := 1; attempt <= 3; attempt++ {
+			if attempt > 1 {
+				waitTime := time.Duration(attempt*10) * time.Second
+				fmt.Printf("   Waiting %v before retry...\n", waitTime)
+				time.Sleep(waitTime)
 			}
 			
-			fmt.Println("\n⏳ Menunggu pairing selesai...")
-			select {}
+			fmt.Printf("🔄 Method 1: Phone Number Pairing (attempt %d/3)\n", attempt)
+			fmt.Println("   Requesting pairing code untuk nomor:", config.BotNumber)
+			
+			pairCode, err := client.PairPhone(context.Background(), phoneNumber, true, whatsmeow.PairClientChrome, "Fasting Bot")
+			if err == nil {
+				fmt.Println("✅ Pairing code generated!")
+				fmt.Println()
+				fmt.Println("📱 CARA MENGGUNAKAN PHONE PAIRING:")
+				fmt.Println("   1. Buka WhatsApp di HP")
+				fmt.Println("   2. Settings → Linked Devices → Link a Device")
+				fmt.Println("   3. Pilih 'Link with phone number instead'")
+				fmt.Println("   4. Masukkan kode:", pairCode)
+				fmt.Println()
+				fmt.Println("⏱️  Kode expired dalam 60 detik!")
+				
+				codeFile, _ := os.Create("/opt/fasting-bot/data/pairing-code.txt")
+				if codeFile != nil {
+					fmt.Fprintf(codeFile, "Fasting Bot WhatsApp Pairing Code\n")
+					fmt.Fprintf(codeFile, "Phone: %s\n", config.BotNumber)
+					fmt.Fprintf(codeFile, "Code: %s\n\n", pairCode)
+					fmt.Fprintf(codeFile, "Cara menggunakan:\n")
+					fmt.Fprintf(codeFile, "1. Buka WhatsApp di HP\n")
+					fmt.Fprintf(codeFile, "2. Settings → Linked Devices → Link a Device\n")
+					fmt.Fprintf(codeFile, "3. Pilih 'Link with phone number instead'\n")
+					fmt.Fprintf(codeFile, "4. Masukkan kode: %s\n", pairCode)
+					codeFile.Close()
+					fmt.Println("💾 Pairing code disimpan di: /opt/fasting-bot/data/pairing-code.txt")
+				}
+				
+				fmt.Println("\n⏳ Menunggu pairing selesai...")
+				select {}
+			}
+
+			fmt.Println("⚠️  Phone pairing failed:", err)
+			if strings.Contains(err.Error(), "429") {
+				fmt.Println("   Rate limited by WhatsApp. Waiting longer...")
+				fmt.Println("   Ini normal kalau terlalu banyak percobaan.")
+			}
 		}
 
-		fmt.Println("⚠️  Phone pairing failed:", err)
-		fmt.Println("   Falling back ke QR Code...")
 		fmt.Println()
-
-		qrChan, _ := client.GetQRChannel(context.Background())
-		if qrChan == nil {
-			return nil, fmt.Errorf("failed to get QR channel: %w", err)
-		}
-
-		fmt.Println("🔄 Method 2: QR Code")
+		fmt.Println("🔄 Method 2: QR Code (fallback)")
 		fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
 		fmt.Println()
+
+		qrChan, err := client.GetQRChannel(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get QR channel: %w", err)
+		}
 
 		for evt := range qrChan {
 			if evt.Event == "code" {
