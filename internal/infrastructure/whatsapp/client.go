@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"fasting-bot/internal/config"
 
@@ -34,8 +35,14 @@ func NewClient() (*Client, error) {
 	client := whatsmeow.NewClient(deviceStore, logger)
 
 	if client.Store.ID == nil {
-		fmt.Println("\n📱 No session found. Please scan the QR code below:")
-		fmt.Println("   (If QR code doesn't appear, make sure your terminal supports Unicode)\n")
+		fmt.Println("\n📱 No session found. Starting pairing process...")
+		fmt.Println("   Bot Number: " + config.BotNumber)
+		fmt.Println()
+
+		// Try QR code first
+		fmt.Println("🔄 Method 1: QR Code (scan dengan WhatsApp)")
+		fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
+		fmt.Println()
 
 		qrChan, err := client.GetQRChannel(context.Background())
 		if err != nil {
@@ -46,39 +53,99 @@ func NewClient() (*Client, error) {
 			return nil, fmt.Errorf("failed to connect: %w", err)
 		}
 
-		for evt := range qrChan {
-			if evt.Event == "code" {
-				fmt.Println("\n📲 Scan this QR code with WhatsApp:")
-				fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
-				fmt.Println()
-				
-				// Save QR to file for easy viewing
-				qrFile, err := os.Create("/opt/fasting-bot/data/qr-code.txt")
-				if err == nil {
-					fmt.Fprintf(qrFile, "Fasting Bot WhatsApp QR Code\n")
-					fmt.Fprintf(qrFile, "Scan dengan: WhatsApp → Settings → Linked Devices → Link a Device\n\n")
-					qrterminal.GenerateWithConfig(evt.Code, qrterminal.Config{
-						Level:     qrterminal.L,
-						Writer:    qrFile,
-						BlackChar: qrterminal.WHITE,
-						WhiteChar: qrterminal.BLACK,
-						QuietZone: 2,
-					})
-					qrFile.Close()
-					fmt.Println("💾 QR code juga disimpan di: /opt/fasting-bot/data/qr-code.txt")
-					fmt.Println("   Download: scp root@103.169.206.19:/opt/fasting-bot/data/qr-code.txt ./qr-code.txt")
+		qrSuccess := make(chan bool, 1)
+		go func() {
+			for evt := range qrChan {
+				if evt.Event == "code" {
+					fmt.Println("\n📲 QR Code generated! Scan sekarang:")
+					fmt.Println()
+					
+					// Save QR to file for easy viewing
+					qrFile, err := os.Create("/opt/fasting-bot/data/qr-code.txt")
+					if err == nil {
+						fmt.Fprintf(qrFile, "Fasting Bot WhatsApp QR Code\n")
+						fmt.Fprintf(qrFile, "Scan dengan: WhatsApp → Settings → Linked Devices → Link a Device\n\n")
+						qrterminal.GenerateWithConfig(evt.Code, qrterminal.Config{
+							Level:     qrterminal.L,
+							Writer:    qrFile,
+							BlackChar: qrterminal.WHITE,
+							WhiteChar: qrterminal.BLACK,
+							QuietZone: 2,
+						})
+						qrFile.Close()
+						fmt.Println("💾 QR code juga disimpan di: /opt/fasting-bot/data/qr-code.txt")
+						fmt.Println("   Download: scp root@103.169.206.19:/opt/fasting-bot/data/qr-code.txt ./qr-code.txt")
+					}
+					
+					qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
+					fmt.Println()
+					fmt.Println("⏱️  QR code akan expired dalam 60 detik...")
+					fmt.Println("   Kalau gagal scan, bot akan otomatis coba Pairing Code")
+				} else if evt.Event == "timeout" {
+					fmt.Println("⏱️  QR code expired. Generating new one...")
+				} else if evt.Event == "success" {
+					fmt.Println("✅ QR Login successful!")
+					qrSuccess <- true
+					break
+				} else {
+					fmt.Printf("QR Event: %s\n", evt.Event)
 				}
-				
-				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
-				fmt.Println()
-			} else if evt.Event == "timeout" {
-				fmt.Println("⏱️  QR code expired. Generating new one...")
-			} else if evt.Event == "success" {
-				fmt.Println("✅ Login successful!")
-				break
-			} else {
-				fmt.Printf("QR Event: %s\n", evt.Event)
 			}
+			qrSuccess <- false
+		}()
+
+		// Wait for QR success or timeout
+		qrWorked := <-qrSuccess
+		
+		if !qrWorked {
+			fmt.Println("\n🔄 Method 2: Phone Number Pairing Code")
+			fmt.Println("   Masukkan kode 8 digit di WhatsApp")
+			fmt.Println()
+			
+			// Use phone number pairing as fallback
+			phoneNumber := strings.TrimPrefix(config.BotNumber, "+")
+			
+			// Wait a bit for connection to stabilize
+			fmt.Println("🔄 Requesting pairing code untuk nomor:", config.BotNumber)
+			
+			pairCode, err := client.PairPhone(context.Background(), phoneNumber, true, whatsmeow.PairClientChrome, "Fasting Bot")
+			if err != nil {
+				return nil, fmt.Errorf("failed to get pairing code: %w", err)
+			}
+			
+			fmt.Println("✅ Pairing code generated!")
+			fmt.Println()
+			fmt.Println("📱 CARA MENGGUNAKAN:")
+			fmt.Println("   1. Buka WhatsApp di HP")
+			fmt.Println("   2. Settings → Linked Devices → Link a Device")
+			fmt.Println("   3. Pilih 'Link with phone number instead'")
+			fmt.Println("   4. Masukkan kode:", pairCode)
+			fmt.Println()
+			fmt.Println("⏱️  Kode expired dalam 60 detik!")
+			fmt.Println("   Kalau gagal, restart bot: systemctl restart fasting-bot")
+			
+			// Save pairing code to file
+			codeFile, err := os.Create("/opt/fasting-bot/data/pairing-code.txt")
+			if err == nil {
+				fmt.Fprintf(codeFile, "Fasting Bot WhatsApp Pairing Code\n")
+				fmt.Fprintf(codeFile, "Phone: %s\n", config.BotNumber)
+				fmt.Fprintf(codeFile, "Code: %s\n\n", pairCode)
+				fmt.Fprintf(codeFile, "Cara menggunakan:\n")
+				fmt.Fprintf(codeFile, "1. Buka WhatsApp di HP\n")
+				fmt.Fprintf(codeFile, "2. Settings → Linked Devices → Link a Device\n")
+				fmt.Fprintf(codeFile, "3. Pilih 'Link with phone number instead'\n")
+				fmt.Fprintf(codeFile, "4. Masukkan kode: %s\n", pairCode)
+				codeFile.Close()
+				fmt.Println("💾 Pairing code disimpan di: /opt/fasting-bot/data/pairing-code.txt")
+			}
+			
+			// Wait for pairing to complete (blocking)
+			fmt.Println("\n⏳ Menunggu pairing selesai...")
+			fmt.Println("   (Tekan Ctrl+C kalau mau cancel)")
+			
+			// Keep the connection alive until pairing succeeds
+			// The pairing code event will be handled by the client internally
+			select {}
 		}
 	} else {
 		if err := client.Connect(); err != nil {
