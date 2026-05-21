@@ -7,7 +7,7 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 - ⏰ Notifikasi otomatis saat fasting mulai dan berakhir
 - 📱 Bisa digunakan di grup maupun DM personal
 - 🗄️ Database SQLite (ringan, tanpa server)
-- 📋 Command sederhana: /daftar, /jadwal, /status, /batal
+- 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /status, /buka
 
 ## Nomor Bot
 
@@ -120,7 +120,8 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 **Test di DM (nomor pribadi kamu):**
 ```
 /daftar
-/jadwal 05:00 18:00
+/list-puasa
+/set-puasa 3 05:00
 /status
 ```
 
@@ -129,7 +130,15 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 2. Kirim command di grup:
 ```
 /daftar
-/jadwal 05:00 18:00
+/list-puasa
+/set-puasa 3 05:00
+/status
+```
+
+**Test /list-puasa dan /set-puasa:**
+```
+/list-puasa
+/set-puasa 3 05:00
 /status
 ```
 
@@ -142,11 +151,39 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 | Command | Deskripsi | Contoh |
 |---|---|---|
 | `/daftar` | Daftar sebagai user | `/daftar` |
-| `/jadwal HH:MM HH:MM` | Atur jadwal fasting | `/jadwal 05:00 18:00` |
+| `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
+| `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
 | `/status` | Cek status fasting | `/status` |
-| `/batal` | Batalkan fasting hari ini | `/batal` |
+| `/buka` | Buka puasa / batalkan fasting | `/buka` |
 | `/help` | Tampilkan bantuan | `/help` |
 | `/info` | Info bot | `/info` |
+
+## Jenis-Jenis Puasa
+
+Bot mendukung 10 jenis puasa yang bisa dipilih:
+
+| No | Jenis | Durasi Puasa | Cara Set |
+|---|---|---|---|---|
+| 1 | IF 12:12 | 12 jam | `/set-puasa 1 05:00` |
+| 2 | IF 14:10 | 14 jam | `/set-puasa 2 05:00` |
+| 3 | IF 16:8 | 16 jam | `/set-puasa 3 05:00` |
+| 4 | IF 18:6 | 18 jam | `/set-puasa 4 05:00` |
+| 5 | IF 20:4 | 20 jam | `/set-puasa 5 05:00` |
+| 6 | OMAD-1 | 22 jam | `/set-puasa 6 05:00` |
+| 7 | OMAD-2 | 23 jam | `/set-puasa 7 05:00` |
+| 8 | Water Fasting | 24/36/48/72 jam | `/set-puasa 8 05:00 48` |
+| 9 | Water Fasting (Bebas) | >24 jam bebas | `/set-puasa 9 05:00 96` |
+| 10 | Dry Fasting | Bebas tentukan | `/set-puasa 10 05:00 18` |
+
+### Cara Menggunakan
+
+1. Lihat daftar: `/list-puasa`
+2. Pilih jenis IF & OMAD (1-7): `/set-puasa <nomor> <jam_mulai>`
+   - Contoh: `/set-puasa 3 05:00` → Puasa jam 05:00 - 21:00 (16 jam)
+   - Contoh: `/set-puasa 6 05:00` → Puasa jam 05:00 - 03:00 (22 jam)
+3. Pilih Water/Dry Fasting (8-10): `/set-puasa <nomor> <jam_mulai> <durasi_jam>`
+   - Contoh: `/set-puasa 8 05:00 48` → Water Fasting 48 jam dari jam 05:00
+   - Contoh: `/set-puasa 10 05:00 18` → Dry Fasting 18 jam dari jam 05:00
 
 ## Menambah Fitur Baru
 

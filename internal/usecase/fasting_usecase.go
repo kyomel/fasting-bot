@@ -13,6 +13,7 @@ type FastingUsecase interface {
 	SetSchedule(phone, start, end string) (string, error)
 	GetStatus(phone string) (string, error)
 	CancelToday(phone string) (string, error)
+	SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error)
 }
 
 type fastingUsecase struct {
@@ -47,7 +48,7 @@ func (u *fastingUsecase) RegisterUser(phone, jid string) (string, error) {
 		return "", fmt.Errorf("gagal mendaftar: %w", err)
 	}
 
-	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nNomor: %s\n\nSekarang atur jadwal fasting dengan:\n/jadwal HH:MM HH:MM\n\nContoh: /jadwal 05:00 18:00", phone), nil
+	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nNomor: %s\n\nSekarang pilih jenis puasa dengan:\n/list-puasa\n/set-puasa <nomor> <jam_mulai>\n\nContoh: /set-puasa 3 05:00", phone), nil
 }
 
 func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
@@ -90,7 +91,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 
 	schedule, err := u.scheduleRepo.FindActiveByUserID(user.ID)
 	if err != nil {
-		return "📋 *Status Fasting*\nBelum ada jadwal.\n\nAtur dengan: /jadwal HH:MM HH:MM", nil
+		return "📋 *Status Fasting*\nBelum ada jadwal.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", nil
 	}
 
 	now := time.Now()
@@ -122,7 +123,69 @@ func (u *fastingUsecase) CancelToday(phone string) (string, error) {
 		return "", fmt.Errorf("gagal membatalkan: %w", err)
 	}
 
-	return "✅ Fasting hari ini dibatalkan. Tidak akan ada notifikasi hari ini.", nil
+	return "✅ Fasting dibuka. Tidak akan ada notifikasi hari ini. Selamat berbuka! 🎉", nil
+}
+
+func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error) {
+	fastingType, err := domain.GetFastingTypeByID(typeID)
+	if err != nil {
+		return "❌ Jenis puasa tidak ditemukan. Kirim /list-puasa untuk melihat daftar.", nil
+	}
+
+	if _, err := time.Parse("15:04", startTime); err != nil {
+		return "❌ Format jam mulai salah. Gunakan HH:MM (contoh: 05:00)", nil
+	}
+
+	user, err := u.userRepo.FindByPhone(phone)
+	if err != nil {
+		return "❌ Kamu belum terdaftar. Kirim /daftar dulu.", nil
+	}
+
+	var endTime string
+	var fastingTypeName string
+
+	switch fastingType.ID {
+	case 1, 2, 3, 4, 5, 6, 7:
+		endTime = calculateEndTime(startTime, fastingType.FastHours)
+		fastingTypeName = fastingType.Name
+	case 8:
+		if durationHours != 24 && durationHours != 36 && durationHours != 48 && durationHours != 72 {
+			return "❌ Durasi Water Fasting harus 24, 36, 48, atau 72 jam.", nil
+		}
+		endTime = calculateEndTime(startTime, durationHours)
+		fastingTypeName = fmt.Sprintf("Water Fasting %d jam", durationHours)
+	case 9:
+		if durationHours < 24 {
+			return "❌ Water Fasting bebas minimal 24 jam.", nil
+		}
+		endTime = calculateEndTime(startTime, durationHours)
+		fastingTypeName = fmt.Sprintf("Water Fasting %d jam", durationHours)
+	case 10:
+		if durationHours < 1 {
+			return "❌ Durasi Dry Fasting harus minimal 1 jam.", nil
+		}
+		endTime = calculateEndTime(startTime, durationHours)
+		fastingTypeName = fmt.Sprintf("Dry Fasting %d jam", durationHours)
+	}
+
+	u.scheduleRepo.DeactivateByUserID(user.ID)
+
+	schedule := &domain.FastingSchedule{
+		UserID:    user.ID,
+		FastStart: startTime,
+		FastEnd:   endTime,
+	}
+	if err := u.scheduleRepo.Create(schedule); err != nil {
+		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
+	}
+
+	return fmt.Sprintf("✅ *Jadwal %s Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, startTime, endTime), nil
+}
+
+func calculateEndTime(start string, hours int) string {
+	startTime, _ := time.Parse("15:04", start)
+	endTime := startTime.Add(time.Duration(hours) * time.Hour)
+	return endTime.Format("15:04")
 }
 
 func formatDuration(d time.Duration) string {
