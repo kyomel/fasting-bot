@@ -41,6 +41,8 @@ func NewClient() (*Client, error) {
 		fmt.Println("   Bot Number: " + config.BotNumber)
 		fmt.Println()
 
+		qrChan, _ := client.GetQRChannel(context.Background())
+
 		if err := client.Connect(); err != nil {
 			return nil, fmt.Errorf("failed to connect: %w", err)
 		}
@@ -99,9 +101,8 @@ func NewClient() (*Client, error) {
 		fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
 		fmt.Println()
 
-		qrChan, err := client.GetQRChannel(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get QR channel: %w", err)
+		if qrChan == nil {
+			return nil, fmt.Errorf("QR channel not available and phone pairing failed")
 		}
 
 		for evt := range qrChan {
