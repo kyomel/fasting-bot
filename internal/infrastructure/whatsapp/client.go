@@ -13,6 +13,7 @@ import (
 	"github.com/skip2/go-qrcode"
 	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
@@ -21,31 +22,34 @@ type Client struct {
 	WA *whatsmeow.Client
 }
 
-func NewClient() (*Client, error) {
+func createStore() (*sqlstore.Container, *store.Device, error) {
 	logger := waLog.Stdout("Client", "INFO", true)
-
+	
 	container, err := sqlstore.New(context.Background(), "sqlite3", "file:"+config.SessionPath+"?_foreign_keys=on", logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create sqlstore: %w", err)
+		return nil, nil, fmt.Errorf("failed to create sqlstore: %w", err)
 	}
 
 	deviceStore, err := container.GetFirstDevice(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get device: %w", err)
+		return nil, nil, fmt.Errorf("failed to get device: %w", err)
+	}
+	
+	return container, deviceStore, nil
+}
+
+func NewClient() (*Client, error) {
+	_, deviceStore, err := createStore()
+	if err != nil {
+		return nil, err
 	}
 
-	client := whatsmeow.NewClient(deviceStore, logger)
+	client := whatsmeow.NewClient(deviceStore, waLog.Stdout("Client", "INFO", true))
 
 	if client.Store.ID == nil {
 		fmt.Println("\n📱 No session found. Starting pairing process...")
 		fmt.Println("   Bot Number: " + config.BotNumber)
 		fmt.Println()
-
-		qrChan, _ := client.GetQRChannel(context.Background())
-
-		if err := client.Connect(); err != nil {
-			return nil, fmt.Errorf("failed to connect: %w", err)
-		}
 
 		phoneNumber := strings.TrimPrefix(config.BotNumber, "+")
 		
@@ -58,6 +62,10 @@ func NewClient() (*Client, error) {
 			
 			fmt.Printf("🔄 Method 1: Phone Number Pairing (attempt %d/3)\n", attempt)
 			fmt.Println("   Requesting pairing code untuk nomor:", config.BotNumber)
+			
+			if err := client.Connect(); err != nil {
+				return nil, fmt.Errorf("failed to connect: %w", err)
+			}
 			
 			pairCode, err := client.PairPhone(context.Background(), phoneNumber, true, whatsmeow.PairClientChrome, "Fasting Bot")
 			if err == nil {
@@ -94,6 +102,14 @@ func NewClient() (*Client, error) {
 				fmt.Println("   Rate limited by WhatsApp. Waiting longer...")
 				fmt.Println("   Ini normal kalau terlalu banyak percobaan.")
 			}
+			
+			client.Disconnect()
+			
+			_, deviceStore, err = createStore()
+			if err != nil {
+				return nil, err
+			}
+			client = whatsmeow.NewClient(deviceStore, waLog.Stdout("Client", "INFO", true))
 		}
 
 		fmt.Println()
@@ -101,8 +117,13 @@ func NewClient() (*Client, error) {
 		fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
 		fmt.Println()
 
-		if qrChan == nil {
-			return nil, fmt.Errorf("QR channel not available and phone pairing failed")
+		qrChan, err := client.GetQRChannel(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get QR channel: %w", err)
+		}
+
+		if err := client.Connect(); err != nil {
+			return nil, fmt.Errorf("failed to connect: %w", err)
 		}
 
 		for evt := range qrChan {
