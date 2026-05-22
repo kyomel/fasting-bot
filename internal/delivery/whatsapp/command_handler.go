@@ -97,21 +97,15 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 	switch command {
 	case "/daftar", "/register":
 		name := strings.Join(args, " ")
-		resp, err := h.usecase.RegisterUser(phone, jid, name)
-		if err != nil {
-			log.Printf("[ERROR] RegisterUser(%s): %v", phone, err)
-			return "❌ Terjadi kesalahan saat mendaftar. Coba lagi nanti.", nil
-		}
-		return resp, nil
+		return h.callUsecase(phone, "RegisterUser", func() (string, error) {
+			return h.usecase.RegisterUser(phone, jid, name)
+		})
 
 	case "/setname":
 		name := strings.Join(args, " ")
-		resp, err := h.usecase.SetName(phone, name)
-		if err != nil {
-			log.Printf("[ERROR] SetName(%s): %v", phone, err)
-			return "❌ Terjadi kesalahan saat mengubah nama. Coba lagi nanti.", nil
-		}
-		return resp, nil
+		return h.callUsecase(phone, "SetName", func() (string, error) {
+			return h.usecase.SetName(phone, name)
+		})
 
 	case "/list-puasa":
 		return domain.GetFastingTypesList(), nil
@@ -123,44 +117,29 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 		return h.handleJadwalkan(phone, args)
 
 	case "/status":
-		resp, err := h.usecase.GetStatus(phone)
-		if err != nil {
-			log.Printf("[ERROR] GetStatus(%s): %v", phone, err)
-			return "❌ Terjadi kesalahan saat mengambil status. Coba lagi nanti.", nil
-		}
-		return resp, nil
+		return h.callUsecase(phone, "GetStatus", func() (string, error) {
+			return h.usecase.GetStatus(phone)
+		})
 
 	case "/buka", "/cancel":
-		resp, err := h.usecase.CancelToday(phone)
-		if err != nil {
-			log.Printf("[ERROR] CancelToday(%s): %v", phone, err)
-			return "❌ Terjadi kesalahan saat membatalkan. Coba lagi nanti.", nil
-		}
-		return resp, nil
+		return h.callUsecase(phone, "CancelToday", func() (string, error) {
+			return h.usecase.CancelToday(phone)
+		})
 
 	case "/hapus":
-		resp, err := h.usecase.DeleteSchedule(phone)
-		if err != nil {
-			log.Printf("[ERROR] DeleteSchedule(%s): %v", phone, err)
-			return "❌ Terjadi kesalahan saat menghapus jadwal. Coba lagi nanti.", nil
-		}
-		return resp, nil
+		return h.callUsecase(phone, "DeleteSchedule", func() (string, error) {
+			return h.usecase.DeleteSchedule(phone)
+		})
 
 	case "/stats":
-		resp, err := h.usecase.GetStats(phone)
-		if err != nil {
-			log.Printf("[ERROR] GetStats(%s): %v", phone, err)
-			return "❌ Terjadi kesalahan saat mengambil stats. Coba lagi nanti.", nil
-		}
-		return resp, nil
+		return h.callUsecase(phone, "GetStats", func() (string, error) {
+			return h.usecase.GetStats(phone)
+		})
 
 	case "/leaderboard":
-		resp, err := h.usecase.GetLeaderboard()
-		if err != nil {
-			log.Printf("[ERROR] GetLeaderboard: %v", err)
-			return "❌ Terjadi kesalahan saat mengambil leaderboard. Coba lagi nanti.", nil
-		}
-		return resp, nil
+		return h.callUsecase(phone, "GetLeaderboard", func() (string, error) {
+			return h.usecase.GetLeaderboard()
+		})
 
 	case "/help", "/bantuan":
 		return getHelpText(), nil
@@ -171,6 +150,32 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 	default:
 		return "", nil
 	}
+}
+
+func (h *CommandHandler) callUsecase(phone, label string, fn func() (string, error)) (string, error) {
+	resp, err := fn()
+	if err != nil {
+		log.Printf("[ERROR] %s(%s): %v", label, phone, err)
+		return "❌ Terjadi kesalahan saat " + errorLabel(label) + ". Coba lagi nanti.", nil
+	}
+	return resp, nil
+}
+
+var errorLabels = map[string]string{
+	"RegisterUser":   "mendaftar",
+	"SetName":         "mengubah nama",
+	"GetStatus":       "mengambil status",
+	"CancelToday":     "membatalkan",
+	"DeleteSchedule":  "menghapus jadwal",
+	"GetStats":        "mengambil stats",
+	"GetLeaderboard":  "mengambil leaderboard",
+}
+
+func errorLabel(method string) string {
+	if label, ok := errorLabels[method]; ok {
+		return label
+	}
+	return method
 }
 
 func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, error) {

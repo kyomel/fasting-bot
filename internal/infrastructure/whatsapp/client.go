@@ -38,77 +38,9 @@ func NewClient() (*Client, error) {
 	client := whatsmeow.NewClient(deviceStore, logger)
 
 	if client.Store.ID == nil {
-		fmt.Println()
-		fmt.Println("📱 No session found — QR Code pairing")
-		fmt.Println("   Bot: " + config.BotNumber)
-		fmt.Println()
-
-		qrChan, err := client.GetQRChannel(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get QR channel: %w", err)
+		if err := pairWithQRCode(client); err != nil {
+			return nil, err
 		}
-
-		if err := client.Connect(); err != nil {
-			return nil, fmt.Errorf("failed to connect: %w", err)
-		}
-
-		fmt.Println("📲 Tunggu QR code muncul...")
-		fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
-		fmt.Println()
-
-		deadline := time.After(qrTimeout)
-		var qrCount int
-
-		for {
-			select {
-			case <-deadline:
-				fmt.Println()
-				fmt.Println("⏱️  Waktu pairing habis (3 menit).")
-				fmt.Println("   Jalankan ulang bot untuk mencoba lagi.")
-				return nil, fmt.Errorf("pairing timeout after %v", qrTimeout)
-
-			case evt, ok := <-qrChan:
-				if !ok {
-					return nil, fmt.Errorf("QR channel closed unexpectedly")
-				}
-
-				switch evt.Event {
-				case "code":
-					qrCount++
-					fmt.Printf("📲 QR Code #%d — scan sekarang:\n", qrCount)
-					fmt.Println()
-
-					qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
-					fmt.Println()
-
-					if config.QRCodePath != "" {
-						qrcode.WriteFile(evt.Code, qrcode.Medium, 512, config.QRCodePath)
-						fmt.Println("💾 Saved: " + config.QRCodePath)
-						if config.QRCodeHost != "" {
-							fmt.Printf("   scp %s:%s ./qr-code.png\n", config.QRCodeHost, config.QRCodePath)
-						}
-					}
-					fmt.Println("⏱️  QR ini expired ~60 detik, tapi akan regenerate otomatis.")
-					fmt.Println()
-
-				case "timeout":
-					fmt.Println("   ⏱️  QR expired — generating new one...")
-
-				case "success":
-					fmt.Println()
-					fmt.Println("✅ QR scanned! Authenticating...")
-
-				default:
-					fmt.Printf("   Event: %s\n", evt.Event)
-				}
-
-				if evt.Event == "success" {
-					goto done
-				}
-			}
-		}
-
-	done:
 		fmt.Println("✅ Connected to WhatsApp!")
 	} else {
 		if err := client.Connect(); err != nil {
@@ -118,6 +50,82 @@ func NewClient() (*Client, error) {
 	}
 
 	return &Client{WA: client}, nil
+}
+
+func pairWithQRCode(client *whatsmeow.Client) error {
+	fmt.Println()
+	fmt.Println("📱 No session found — QR Code pairing")
+	fmt.Println("   Bot: " + config.BotNumber)
+	fmt.Println()
+
+	qrChan, err := client.GetQRChannel(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get QR channel: %w", err)
+	}
+
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("failed to connect: %w", err)
+	}
+
+	fmt.Println("📲 Tunggu QR code muncul...")
+	fmt.Println("   WhatsApp → Settings → Linked Devices → Link a Device")
+	fmt.Println()
+
+	return waitForQRScan(qrChan)
+}
+
+func waitForQRScan(qrChan <-chan whatsmeow.QRChannelItem) error {
+	deadline := time.After(qrTimeout)
+	var qrCount int
+
+	for {
+		select {
+		case <-deadline:
+			fmt.Println()
+			fmt.Println("⏱️  Waktu pairing habis (3 menit).")
+			fmt.Println("   Jalankan ulang bot untuk mencoba lagi.")
+			return fmt.Errorf("pairing timeout after %v", qrTimeout)
+
+		case evt, ok := <-qrChan:
+			if !ok {
+				return fmt.Errorf("QR channel closed unexpectedly")
+			}
+			if evt.Event == "success" {
+				fmt.Println()
+				fmt.Println("✅ QR scanned! Authenticating...")
+				return nil
+			}
+			handleQREvent(evt, &qrCount)
+		}
+	}
+}
+
+func handleQREvent(evt whatsmeow.QRChannelItem, qrCount *int) {
+	switch evt.Event {
+	case "code":
+		*qrCount++
+		fmt.Printf("📲 QR Code #%d — scan sekarang:\n", *qrCount)
+		fmt.Println()
+
+		qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
+		fmt.Println()
+
+		if config.QRCodePath != "" {
+			qrcode.WriteFile(evt.Code, qrcode.Medium, 512, config.QRCodePath)
+			fmt.Println("💾 Saved: " + config.QRCodePath)
+			if config.QRCodeHost != "" {
+				fmt.Printf("   scp %s:%s ./qr-code.png\n", config.QRCodeHost, config.QRCodePath)
+			}
+		}
+		fmt.Println("⏱️  QR ini expired ~60 detik, tapi akan regenerate otomatis.")
+		fmt.Println()
+
+	case "timeout":
+		fmt.Println("   ⏱️  QR expired — generating new one...")
+
+	default:
+		fmt.Printf("   Event: %s\n", evt.Event)
+	}
 }
 
 func (c *Client) Disconnect() {

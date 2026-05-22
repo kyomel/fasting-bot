@@ -18,6 +18,10 @@ const (
 	displayDateLayout = "02-01-2006 15:04"
 )
 
+const errCheckDataFormat = "gagal memeriksa data: %w"
+const msgNotRegistered = "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu."
+const errSaveScheduleFormat = "gagal menyimpan jadwal: %w"
+
 type FastingUsecase interface {
 	RegisterUser(phone, jid, name string) (string, error)
 	SetName(phone, name string) (string, error)
@@ -56,7 +60,7 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 
 	existingUser, err := u.userRepo.FindByPhone(phone)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
 	if existingUser != nil && existingUser.ID > 0 {
@@ -87,9 +91,9 @@ func (u *fastingUsecase) SetName(phone, name string) (string, error) {
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+			return msgNotRegistered, nil
 		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
 	if err := u.userRepo.UpdateName(user.ID, name); err != nil {
@@ -116,9 +120,9 @@ func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+			return msgNotRegistered, nil
 		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
 	u.scheduleRepo.DeactivateByUserID(user.ID)
@@ -130,7 +134,7 @@ func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
 		FastingTypeName: "Manual",
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
-		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
+		return "", fmt.Errorf(errSaveScheduleFormat, err)
 	}
 
 	return fmt.Sprintf("✅ *Jadwal Fasting Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", formatDisplayTime(startTime), formatDisplayTime(endTime)), nil
@@ -140,9 +144,9 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+			return msgNotRegistered, nil
 		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
 	name := user.Name
@@ -179,34 +183,63 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 }
 
 func (u *fastingUsecase) CancelToday(phone string) (string, error) {
-	user, err := u.userRepo.FindByPhone(phone)
+	user, err := u.lookupUser(phone)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
-		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", err
+	}
+	if user == nil {
+		return msgNotRegistered, nil
 	}
 
-	schedule, err := u.scheduleRepo.FindActiveByUserID(user.ID)
+	schedule, err := u.lookupActiveSchedule(user.ID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "ℹ️ Belum ada jadwal fasting aktif untuk dibuka.", nil
-		}
-		return "", fmt.Errorf("gagal memeriksa jadwal: %w", err)
+		return "", err
+	}
+	if schedule == nil {
+		return "ℹ️ Belum ada jadwal fasting aktif untuk dibuka.", nil
 	}
 
 	now := time.Now().In(config.Location)
 	startTime, _ := parseScheduleTime(schedule.FastStart, now)
 	if now.Before(startTime) {
-		if err := u.scheduleRepo.DeactivateByUserID(user.ID); err != nil {
-			return "", fmt.Errorf("gagal membatalkan jadwal: %w", err)
-		}
-		if err := u.notificationRepo.LogNotification(user.ID, "cancelled"); err != nil {
-			return "", fmt.Errorf("gagal mencatat pembatalan: %w", err)
-		}
-		return fmt.Sprintf("ℹ️ Jadwal fasting dibatalkan.\nMulai: %s\n\nKarena /buka dilakukan sebelum jam puasa mulai, durasi tidak dihitung ke /stats.", formatDisplayTime(startTime)), nil
+		return u.cancelBeforeStart(user.ID, startTime)
 	}
+	return u.breakFasting(user, schedule, startTime, now)
+}
 
+func (u *fastingUsecase) lookupUser(phone string) (*domain.User, error) {
+	user, err := u.userRepo.FindByPhone(phone)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf(errCheckDataFormat, err)
+	}
+	return user, nil
+}
+
+func (u *fastingUsecase) lookupActiveSchedule(userID int64) (*domain.FastingSchedule, error) {
+	schedule, err := u.scheduleRepo.FindActiveByUserID(userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("gagal memeriksa jadwal: %w", err)
+	}
+	return schedule, nil
+}
+
+func (u *fastingUsecase) cancelBeforeStart(userID int64, startTime time.Time) (string, error) {
+	if err := u.scheduleRepo.DeactivateByUserID(userID); err != nil {
+		return "", fmt.Errorf("gagal membatalkan jadwal: %w", err)
+	}
+	if err := u.notificationRepo.LogNotification(userID, "cancelled"); err != nil {
+		return "", fmt.Errorf("gagal mencatat pembatalan: %w", err)
+	}
+	return fmt.Sprintf("ℹ️ Jadwal fasting dibatalkan.\nMulai: %s\n\nKarena /buka dilakukan sebelum jam puasa mulai, durasi tidak dihitung ke /stats.", formatDisplayTime(startTime)), nil
+}
+
+func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.FastingSchedule, startTime, now time.Time) (string, error) {
 	durationMinutes := int(now.Sub(startTime).Minutes())
 	if durationMinutes < 0 {
 		durationMinutes = 0
@@ -242,9 +275,9 @@ func (u *fastingUsecase) DeleteSchedule(phone string) (string, error) {
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+			return msgNotRegistered, nil
 		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
 	if _, err := u.scheduleRepo.FindActiveByUserID(user.ID); err != nil {
@@ -265,9 +298,9 @@ func (u *fastingUsecase) GetStats(phone string) (string, error) {
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+			return msgNotRegistered, nil
 		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 	if err := u.refreshStaleCurrentStreaks(); err != nil {
 		return "", fmt.Errorf("gagal memperbarui streak puasa: %w", err)
@@ -331,9 +364,9 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+			return msgNotRegistered, nil
 		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
 	var fastHours int
@@ -373,7 +406,7 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 		FastingTypeName: fastingTypeName,
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
-		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
+		return "", fmt.Errorf(errSaveScheduleFormat, err)
 	}
 
 	return fmt.Sprintf("✅ *Jadwal %s Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime)), nil
@@ -402,9 +435,9 @@ func (u *fastingUsecase) ScheduleFreestyleFasting(phone, kind, dateInput, startT
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+			return msgNotRegistered, nil
 		}
-		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
 	u.scheduleRepo.DeactivateByUserID(user.ID)
@@ -416,7 +449,7 @@ func (u *fastingUsecase) ScheduleFreestyleFasting(phone, kind, dateInput, startT
 		FastingTypeName: fastingTypeName,
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
-		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
+		return "", fmt.Errorf(errSaveScheduleFormat, err)
 	}
 
 	return fmt.Sprintf("✅ *Jadwal %s Freestyle Tersimpan!*\nMulai: %s\nSelesai: %s\nDurasi: %d jam\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime), durationHours), nil
