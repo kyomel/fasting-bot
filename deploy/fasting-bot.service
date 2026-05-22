@@ -2,6 +2,8 @@
 Description=Fasting WhatsApp Bot
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -11,23 +13,16 @@ WorkingDirectory=/opt/fasting-bot
 ExecStart=/opt/fasting-bot/fasting-bot
 Restart=always
 RestartSec=10
-StartLimitIntervalSec=300
-StartLimitBurst=5
 
-# Environment
 EnvironmentFile=/opt/fasting-bot/.env
 
-# Logging
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=fasting-bot
 
-# Security hardening
 NoNewPrivileges=true
-ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/opt/fasting-bot
 
 [Install]
 WantedBy=multi-user.target
