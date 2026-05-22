@@ -1,0 +1,118 @@
+PANDUAN PEMAKAIAN FASTING BOT
+=============================
+
+Tujuan bot:
+Bot ini membantu mencatat jadwal puasa dan mengirim notifikasi otomatis saat puasa mulai dan selesai.
+
+
+ALUR PALING SEDERHANA
+---------------------
+1. Daftar dulu:
+   /daftar <nama>
+
+   Contoh:
+   /daftar kyomel
+
+2. Lihat daftar jenis puasa:
+   /list-puasa
+
+3. Pilih puasa dari nomor yang tersedia, lalu set jam mulai:
+   /set-puasa <nomor> <jam_mulai>
+
+   Contoh untuk IF 16:8:
+   /set-puasa 3 05:00
+
+4. Untuk Water Fasting atau Dry Fasting, tambahkan durasi jam:
+   /set-puasa <nomor> <jam_mulai> <durasi_jam>
+
+   Contoh Water Fasting 48 jam:
+   /set-puasa 8 05:00 48
+
+   Contoh Dry Fasting 18 jam:
+   /set-puasa 10 05:00 18
+
+5. Cek status:
+   /status
+
+6. Batalkan atau buka puasa hari ini:
+   /buka
+
+
+DAFTAR JENIS PUASA SAAT INI
+---------------------------
+1. IF 12:12
+   Puasa 12 jam, makan 12 jam
+   Cara set: /set-puasa 1 05:00
+
+2. IF 14:10
+   Puasa 14 jam, makan 10 jam
+   Cara set: /set-puasa 2 05:00
+
+3. IF 16:8
+   Puasa 16 jam, makan 8 jam
+   Cara set: /set-puasa 3 05:00
+
+4. IF 18:6
+   Puasa 18 jam, makan 6 jam
+   Cara set: /set-puasa 4 05:00
+
+5. IF 20:4
+   Puasa 20 jam, makan 4 jam
+   Cara set: /set-puasa 5 05:00
+
+6. OMAD-1
+   One Meal A Day - Puasa 22 jam
+   Cara set: /set-puasa 6 05:00
+
+7. OMAD-2
+   One Meal A Day - Puasa 23 jam
+   Cara set: /set-puasa 7 05:00
+
+8. Water Fasting
+   Puasa air - pilih durasi 24, 36, 48, atau 72 jam
+   Cara set: /set-puasa 8 05:00 48
+
+9. Water Fasting (Bebas)
+   Puasa air bebas, minimal 24 jam
+   Cara set: /set-puasa 9 05:00 96
+
+10. Dry Fasting
+    Puasa kering - bebas tentukan durasi
+    Cara set: /set-puasa 10 05:00 18
+
+
+DAFTAR COMMAND
+--------------
+/daftar <nama>
+Daftar sebagai user.
+
+/setname <nama>
+Ubah nama user yang sudah terdaftar.
+
+/list-puasa
+Lihat daftar jenis puasa dan contoh cara memilihnya.
+
+/set-puasa <nomor> <jam_mulai> [durasi_jam]
+Pilih jenis puasa dari daftar.
+
+/status
+Cek status akun dan jadwal puasa.
+
+/buka
+Batalkan atau buka puasa hari ini.
+
+/help
+Tampilkan bantuan dari bot.
+
+/info
+Tampilkan info bot.
+
+
+CATATAN FORMAT
+--------------
+- Format jam harus HH:MM, contoh: 05:00 atau 18:30.
+- Nomor puasa harus sesuai daftar 1-10.
+- Nomor 1-7 tidak perlu isi durasi karena durasinya sudah tetap.
+- Nomor 8 harus memakai durasi 24, 36, 48, atau 72 jam.
+- Nomor 9 minimal 24 jam.
+- Nomor 10 minimal 1 jam.

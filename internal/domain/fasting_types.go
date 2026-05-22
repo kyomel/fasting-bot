@@ -44,11 +44,11 @@ func GetFastingTypesList() string {
 			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Tentukan durasi sendiri_\n\n", ft.ID, ft.Name, ft.Description)
 		}
 	}
-	result += "*Cara menggunakan:*\n"
-	result += "`/set-puasa <nomor> <jam_mulai>`\n"
-	result += "Contoh: `/set-puasa 3 05:00`\n\n"
-	result += "Untuk Water/Dry Fasting:\n"
-	result += "`/set-puasa 8 05:00 48` (Water Fasting 48 jam)\n"
-	result += "`/set-puasa 10 05:00 18` (Dry Fasting 18 jam)"
+	result += "*Cara pakai singkat:*\n"
+	result += "1. Pilih nomor puasa dari daftar di atas.\n"
+	result += "2. Kirim: `/set-puasa <nomor> <jam_mulai>`\n"
+	result += "   Contoh: `/set-puasa 3 05:00`\n"
+	result += "3. Untuk nomor 8-10, tambahkan durasi jam.\n"
+	result += "   Contoh: `/set-puasa 8 05:00 48`"
 	return result
 }
