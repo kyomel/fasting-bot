@@ -153,8 +153,10 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
 | `/jadwalkan <WF\|DF> <tanggal> <jam> <durasi>` | Jadwalkan Water/Dry Fasting freestyle | `/jadwalkan WF 23-05-2026 16:00 12` |
 | `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai | `/status` |
-| `/buka` | Buka puasa / batalkan fasting | `/buka` |
+| `/buka` | Buka puasa / batalkan fasting. Jika puasa sudah mulai, durasi dicatat ke stats | `/buka` |
 | `/hapus` | Hapus jadwal puasa aktif. Setelah dihapus, `/status` akan menampilkan belum ada jadwal fasting | `/hapus` |
+| `/stats` | Lihat statistik hasil buka puasa pribadi | `/stats` |
+| `/leaderboard` | Lihat klasemen puasa berdasarkan total waktu puasa | `/leaderboard` |
 | `/help` | Tampilkan bantuan | `/help` |
 | `/info` | Info bot | `/info` |
 
@@ -189,12 +191,20 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
    - Contoh: `/jadwalkan DF 23-05-2026 20:00 10` → Dry Fasting 10 jam dari 23-05-2026 20:00 sampai 24-05-2026 06:00
 5. Cek status jadwal: `/status`
    - Status menampilkan jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai.
-6. Hapus jadwal aktif jika ingin mengosongkan status: `/hapus`
+6. Buka puasa: `/buka`
+   - Jika puasa sudah mulai, bot mencatat total waktu puasa ke `/stats` dalam format hari, jam, dan menit.
+   - Jika `/buka` dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
+7. Cek statistik dan klasemen: `/stats` atau `/leaderboard`
+   - `/leaderboard` diurutkan berdasarkan total waktu puasa terbesar.
+8. Hapus jadwal aktif jika ingin mengosongkan status: `/hapus`
    - Setelah `/hapus`, `/status` akan kembali menampilkan belum ada jadwal fasting.
 
 Catatan waktu:
 - Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
+- `/stats` hanya menghitung hasil puasa dari `/buka` setelah puasa dimulai.
+- Progres total `/stats` dan `/leaderboard` disimpan di ringkasan permanen, sehingga riwayat mentah lama bisa dibersihkan tanpa mengurangi total user.
+- Bot membersihkan riwayat mentah lama dan jadwal nonaktif lama setiap 3 hari agar database tetap ringan. Cleanup akan melewati user yang masih punya jadwal puasa aktif.
 - Balasan bot dan `/status` menampilkan jenis puasa, tanggal dan jam mulai, serta tanggal dan jam selesai agar jadwal lebih mudah dipahami.
 
 ## Menambah Fitur Baru

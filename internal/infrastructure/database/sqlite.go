@@ -63,6 +63,31 @@ func migrate(conn *sql.DB) error {
 			sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id)
 		);`,
+		`CREATE TABLE IF NOT EXISTS fasting_records (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			schedule_id INTEGER NOT NULL,
+			fasting_type_name TEXT DEFAULT '',
+			fast_start TEXT NOT NULL,
+			planned_fast_end TEXT NOT NULL,
+			opened_at TEXT NOT NULL,
+			duration_minutes INTEGER NOT NULL,
+			completed_date TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS user_fasting_stats (
+			user_id INTEGER PRIMARY KEY,
+			total_sessions INTEGER NOT NULL DEFAULT 0,
+			total_minutes INTEGER NOT NULL DEFAULT 0,
+			current_streak_days INTEGER NOT NULL DEFAULT 0,
+			longest_streak_days INTEGER NOT NULL DEFAULT 0,
+			last_completed_date TEXT NOT NULL DEFAULT '',
+			last_opened_at TEXT NOT NULL DEFAULT '',
+			last_duration_minutes INTEGER NOT NULL DEFAULT 0,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
 		`CREATE TABLE IF NOT EXISTS groups_ (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			jid TEXT NOT NULL UNIQUE,
@@ -73,8 +98,13 @@ func migrate(conn *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_user_active ON fasting_schedules(user_id, is_active);`,
 		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_active_start ON fasting_schedules(is_active, fast_start);`,
 		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_active_end ON fasting_schedules(is_active, fast_end);`,
+		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_inactive_created ON fasting_schedules(is_active, created_at);`,
 		`CREATE INDEX IF NOT EXISTS idx_notification_logs_user ON notification_logs(user_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_notification_logs_user_type_sent ON notification_logs(user_id, notification_type, sent_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_fasting_records_user_date ON fasting_records(user_id, completed_date);`,
+		`CREATE INDEX IF NOT EXISTS idx_fasting_records_total ON fasting_records(duration_minutes);`,
+		`CREATE INDEX IF NOT EXISTS idx_fasting_records_created_at ON fasting_records(created_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_fasting_stats_total ON user_fasting_stats(total_minutes DESC);`,
 	}
 
 	for _, query := range queries {

@@ -15,6 +15,11 @@ type ScheduleRepository interface {
 	Create(schedule *domain.FastingSchedule) error
 	DeactivateByUserID(userID int64) error
 	FindActiveByUserID(userID int64) (*domain.FastingSchedule, error)
+	CreateFastingRecord(record *domain.FastingRecord) error
+	UpsertFastingStats(record *domain.FastingRecord) error
+	FindFastingStatsByUserID(userID int64) (*domain.FastingStats, error)
+	FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error)
+	CleanupOldFastingRecords(cutoff string) (int64, error)
 	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 }
@@ -27,6 +32,7 @@ type NotificationTarget struct {
 	UserID    int64
 	JID       string
 	Phone     string
+	Name      string
 	FastStart string
 	FastEnd   string
 }

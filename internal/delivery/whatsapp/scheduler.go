@@ -36,6 +36,7 @@ func (s *Scheduler) Start() {
 		cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)),
 	)
 	s.cron.AddFunc("* * * * *", s.checkAndNotify)
+	s.cron.AddFunc("0 3 */3 * *", s.cleanupFastingHistory)
 	s.cron.Start()
 }
 
@@ -58,7 +59,7 @@ func (s *Scheduler) checkAndNotify() {
 	}
 
 	for _, t := range targets {
-		msg := fmt.Sprintf("⏰ *Waktu Fasting Dimulai!*\nFasting sampai %s. Semangat! 💪", formatScheduleForMessage(t.FastEnd))
+		msg := fmt.Sprintf("⏰ *Waktu Puasa Dimulai!*\nHalo %s, puasa kamu sudah dimulai.\nSelesai: %s\n\nSemangat ya! 💪", t.Name, formatScheduleForMessage(t.FastEnd))
 		if err := s.notifier.Send(t.JID, msg); err != nil {
 			fmt.Printf("❌ Failed to send start notification: %v\n", err)
 			continue
@@ -96,4 +97,16 @@ func formatScheduleForMessage(value string) string {
 		return value
 	}
 	return t.Format("02-01-2006 15:04")
+}
+
+func (s *Scheduler) cleanupFastingHistory() {
+	cutoff := time.Now().In(config.Location).AddDate(0, 0, -3).Format("2006-01-02 15:04:05")
+	deleted, err := s.scheduleRepo.CleanupOldFastingRecords(cutoff)
+	if err != nil {
+		fmt.Printf("❌ Failed to cleanup fasting history: %v\n", err)
+		return
+	}
+	if deleted > 0 {
+		fmt.Printf("🧹 Cleaned up %d old fasting history records\n", deleted)
+	}
 }

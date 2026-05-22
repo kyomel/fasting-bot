@@ -146,6 +146,22 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 		}
 		return resp, nil
 
+	case "/stats":
+		resp, err := h.usecase.GetStats(phone)
+		if err != nil {
+			log.Printf("[ERROR] GetStats(%s): %v", phone, err)
+			return "❌ Terjadi kesalahan saat mengambil stats. Coba lagi nanti.", nil
+		}
+		return resp, nil
+
+	case "/leaderboard":
+		resp, err := h.usecase.GetLeaderboard()
+		if err != nil {
+			log.Printf("[ERROR] GetLeaderboard: %v", err)
+			return "❌ Terjadi kesalahan saat mengambil leaderboard. Coba lagi nanti.", nil
+		}
+		return resp, nil
+
 	case "/help", "/bantuan":
 		return getHelpText(), nil
 
@@ -215,6 +231,8 @@ func getHelpText() string {
 /status - Cek status akun & fasting
 /buka - Batalkan fasting hari ini
 /hapus - Hapus jadwal fasting aktif
+/stats - Lihat statistik hasil buka puasa
+/leaderboard - Lihat klasemen puasa
 /help - Tampilkan bantuan ini
 
 Contoh:
@@ -223,5 +241,7 @@ Contoh:
 /set-puasa 3 05:00
 /set-puasa 8 05:00 48
 /jadwalkan WF 23-05-2026 16:00 12
+/stats
+/leaderboard
 /hapus`
 }
