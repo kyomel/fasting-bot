@@ -250,11 +250,11 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, er
 
 func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, error) {
 	if len(args) < 3 {
-		return "❌ Format salah.\nGunakan: /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]\nContoh: /jadwalkan 3 23-05-2026 16:00\nContoh WF: /jadwalkan 8 23-05-2026 16:00 48", nil
+		return "❌ Format salah.\nGunakan nomor puasa seperti /set-puasa: /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]\nContoh IF: /jadwalkan 3 23-05-2026 16:00\nContoh Water Fasting: /jadwalkan 8 23-05-2026 16:00 48", nil
 	}
 
 	if strings.EqualFold(args[0], "WF") || strings.EqualFold(args[0], "DF") {
-		return "❌ Format freestyle WF/DF pindah ke /jadwal-bebas.\nGunakan: /jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
+		return "❌ /jadwalkan tidak memakai kode WF/DF.\nUntuk Water/Dry dari daftar, pakai nomor seperti /set-puasa: /jadwalkan 8 23-05-2026 16:00 48 atau /jadwalkan 9 23-05-2026 16:00 18\nUntuk freestyle WF/DF, pakai: /jadwal-bebas WF 23-05-2026 16:00 12", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])
@@ -307,8 +307,8 @@ func getHelpText() string {
 /setname <nama> - Ubah nama user
 /list-puasa - Lihat jenis-jenis puasa
 /set-puasa <nomor> <jam> [durasi] - Pilih jenis puasa
-/jadwalkan <nomor> <tanggal> <jam> [durasi] - Jadwalkan puasa dari daftar, bisa tanggal lampau
-/jadwal-bebas <WF|DF> <tanggal> <jam> <durasi> - Jadwalkan puasa freestyle
+/jadwalkan <nomor> <tanggal> <jam> [durasi] - Seperti /set-puasa tapi pakai tanggal, bisa rollback
+/jadwal-bebas <WF|DF> <tanggal> <jam> <durasi> - Khusus freestyle WF/DF
 /status - Cek status akun & fasting
 /buka - Batalkan fasting hari ini
 /hapus - Hapus jadwal fasting aktif

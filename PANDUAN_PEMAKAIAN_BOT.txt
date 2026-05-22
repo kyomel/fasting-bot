@@ -37,6 +37,8 @@ ALUR PALING SEDERHANA
 5. Jika ingin menjadwalkan puasa dari daftar dengan tanggal khusus:
    /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
 
+   Format /jadwalkan mengikuti /set-puasa, jadi harus memakai nomor puasa. Jangan pakai WF/DF di /jadwalkan.
+
    Contoh IF 16:8 pada tanggal tertentu:
    /jadwalkan 3 23-05-2026 16:00
 
@@ -131,6 +133,7 @@ Keterangan:
 - Jam memakai format HH:MM
 - Nomor 1-7 tidak perlu durasi
 - Nomor 8-10 wajib memakai durasi jam
+- Jangan pakai WF/DF di /jadwalkan. Untuk Water Fasting gunakan nomor 8, untuk Dry Fasting gunakan nomor 9. Kode WF/DF hanya untuk /jadwal-bebas.
 
 Contoh:
 /jadwalkan 3 23-05-2026 16:00
@@ -199,10 +202,10 @@ Lihat daftar jenis puasa dan contoh cara memilihnya.
 Pilih jenis puasa dari daftar.
 
 /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
-Jadwalkan puasa dari daftar dengan tanggal khusus. Boleh memakai waktu lampau untuk restore progres.
+Jadwalkan puasa dari daftar dengan tanggal khusus. Formatnya mengikuti /set-puasa dan wajib memakai nomor. Boleh memakai waktu lampau untuk restore progres.
 
 /jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
-Jadwalkan Water Fasting atau Dry Fasting freestyle dengan tanggal dan durasi sendiri.
+Jadwalkan Water Fasting atau Dry Fasting freestyle dengan kode WF/DF, tanggal, dan durasi sendiri.
 
 /status
 Cek status akun dan jadwal puasa. Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan jika puasa sudah mulai.
@@ -235,7 +238,7 @@ CATATAN FORMAT
 - Nomor 9 minimal 1 jam.
 - Nomor 10 adalah Prolonged Fasting metode water fasting, minimal 24 jam.
 - Untuk /jadwalkan dan /jadwal-bebas, format tanggal adalah DD-MM-YYYY, contoh: 23-05-2026.
-- Untuk /jadwalkan, nomor puasa mengikuti daftar 1-10 seperti /set-puasa.
+- Untuk /jadwalkan, nomor puasa mengikuti daftar 1-10 seperti /set-puasa. Jangan pakai kode WF/DF di /jadwalkan.
 - Untuk /jadwal-bebas, jenis puasa hanya WF atau DF.
 - Untuk /jadwalkan dan /jadwal-bebas, tanggal dan jam mulai boleh sebelum waktu sekarang untuk restore progres. Jika waktu mulai sudah lewat, bot tidak mengirim ulang notifikasi mulai.
 - Untuk /set-puasa, jam mulai wajib waktu sekarang atau waktu ke depan. Jika jam mulai hari ini sudah lewat dari waktu sekarang, bot otomatis menjadwalkan mulai besok di jam tersebut.

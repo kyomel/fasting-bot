@@ -45,9 +45,13 @@ func GetFastingTypesList() string {
 		}
 	}
 	result += "*Cara pakai singkat:*\n"
-	result += "• IF/OMAD: `/set-puasa <nomor> <jam_mulai>` contoh `/set-puasa 3 05:00`\n"
-	result += "• Water/Dry/Prolonged: `/set-puasa <nomor> <jam_mulai> <durasi_jam>` contoh `/set-puasa 8 05:00 48`\n"
-	result += "• Jadwal tanggal khusus: `/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]` contoh `/jadwalkan 3 23-05-2026 16:00`\n"
-	result += "• Jadwal freestyle WF/DF: `/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwal-bebas WF 23-05-2026 16:00 12`"
+	result += "• `/set-puasa` untuk mulai sekarang/ke depan tanpa tanggal.\n"
+	result += "  IF/OMAD: `/set-puasa <nomor> <jam_mulai>` contoh `/set-puasa 3 05:00`\n"
+	result += "  Water/Dry/Prolonged: `/set-puasa <nomor> <jam_mulai> <durasi_jam>` contoh `/set-puasa 8 05:00 48`\n\n"
+	result += "• `/jadwalkan` untuk tanggal tertentu atau rollback ke masa lalu, formatnya tetap pakai nomor seperti `/set-puasa`.\n"
+	result += "  IF/OMAD: `/jadwalkan <nomor> <tanggal> <jam_mulai>` contoh `/jadwalkan 3 23-05-2026 16:00`\n"
+	result += "  Water/Dry/Prolonged: `/jadwalkan <nomor> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwalkan 8 23-05-2026 16:00 48`\n"
+	result += "  Catatan: jangan pakai WF/DF di `/jadwalkan`; gunakan nomor 8/9 dari daftar.\n\n"
+	result += "• `/jadwal-bebas` khusus freestyle WF/DF: `/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwal-bebas WF 23-05-2026 16:00 12`"
 	return result
 }

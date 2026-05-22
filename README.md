@@ -153,8 +153,8 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 | `/setname <nama>` | Ubah nama user yang sudah terdaftar | `/setname kyomel baru` |
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
-| `/jadwalkan <nomor> <tanggal> <jam> [durasi]` | Jadwalkan puasa dari daftar dengan tanggal khusus. Boleh memakai waktu lampau untuk restore progres yang ter-reset | `/jadwalkan 3 23-05-2026 16:00` |
-| `/jadwal-bebas <WF\|DF> <tanggal> <jam> <durasi>` | Jadwalkan Water/Dry Fasting freestyle | `/jadwal-bebas WF 23-05-2026 16:00 12` |
+| `/jadwalkan <nomor> <tanggal> <jam> [durasi]` | Seperti `/set-puasa`, tetapi memakai tanggal eksplisit. Boleh memakai waktu lampau untuk restore progres yang ter-reset. Tidak memakai kode WF/DF | `/jadwalkan 3 23-05-2026 16:00` |
+| `/jadwal-bebas <WF\|DF> <tanggal> <jam> <durasi>` | Khusus Water/Dry Fasting freestyle dengan kode WF/DF | `/jadwal-bebas WF 23-05-2026 16:00 12` |
 | `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan | `/status` |
 | `/buka` | Buka puasa / batalkan fasting. Jika puasa sudah mulai, durasi dicatat ke stats | `/buka` |
 | `/hapus` | Hapus jadwal puasa aktif. Setelah dihapus, `/status` akan menampilkan belum ada jadwal fasting | `/hapus` |
@@ -193,6 +193,7 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 4. Jadwalkan puasa dari daftar dengan tanggal khusus: `/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]`
    - Contoh: `/jadwalkan 3 23-05-2026 16:00` → IF 16:8 dari 23-05-2026 16:00 sampai 24-05-2026 08:00
    - Contoh: `/jadwalkan 8 23-05-2026 16:00 48` → Water Fasting 48 jam dari 23-05-2026 16:00 sampai 25-05-2026 16:00
+   - `/jadwalkan` selalu memakai nomor seperti `/set-puasa`. Jangan pakai `WF`/`DF` di command ini; Water Fasting pakai nomor 8, Dry Fasting pakai nomor 9.
    - `/jadwalkan` boleh memakai tanggal/jam yang sudah lewat untuk memulihkan progres setelah data aktif ter-reset. Jika mulai sudah lewat, notifikasi mulai tidak dikirim ulang.
 5. Jadwalkan WF/DF freestyle dengan tanggal dan durasi bebas: `/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`
    - Contoh: `/jadwal-bebas WF 23-05-2026 16:00 12` → Water Fasting 12 jam dari 23-05-2026 16:00 sampai 24-05-2026 04:00
@@ -210,6 +211,7 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 Catatan waktu:
 - Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
 - Format tanggal untuk `/jadwal-bebas` adalah `DD-MM-YYYY`.
+- `/jadwalkan` mengikuti format nomor `/set-puasa`: nomor 1-7 tanpa durasi, nomor 8-10 wajib durasi. Kode `WF`/`DF` hanya untuk `/jadwal-bebas`.
 - `/jadwalkan` dan `/jadwal-bebas` boleh memakai tanggal/jam mulai yang sudah lewat untuk restore progres. Setelah itu gunakan `/buka` saat benar-benar berbuka supaya durasi masuk ke `/stats`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
 - Streak puasa dihitung dari tanggal kalender lokal saat puasa berjalan. Jika ada satu hari kalender tanpa puasa berjalan, streak saat ini otomatis kembali ke 0 saat `/stats` atau `/leaderboard` dibuka.
