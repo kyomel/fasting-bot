@@ -6,15 +6,19 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/joho/godotenv"
+
 	"fasting-bot/internal/config"
 	"fasting-bot/internal/delivery/whatsapp"
 	"fasting-bot/internal/infrastructure/database"
-	waInfra "fasting-bot/internal/infrastructure/whatsapp"
 	"fasting-bot/internal/infrastructure/persistence"
+	waInfra "fasting-bot/internal/infrastructure/whatsapp"
 	"fasting-bot/internal/usecase"
 )
 
 func main() {
+	_ = godotenv.Load() // ignore error — production uses systemd EnvironmentFile
+
 	fmt.Println("🤖 Fasting Bot Starting...")
 	fmt.Printf("Bot Number: %s\n", config.BotNumber)
 	fmt.Printf("Admin Number: %s\n", config.AdminNumber)

@@ -3,8 +3,11 @@ module fasting-bot
 go 1.25.1
 
 require (
+	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.44
+	github.com/mdp/qrterminal/v3 v3.2.1
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	go.mau.fi/whatsmeow v0.0.0-20260516102357-8d3700152a69
 	google.golang.org/protobuf v1.36.11
 )
@@ -17,10 +20,8 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
-	github.com/mdp/qrterminal/v3 v3.2.1 // indirect
 	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
-	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/vektah/gqlparser/v2 v2.5.33 // indirect
 	go.mau.fi/libsignal v0.2.1 // indirect
 	go.mau.fi/util v0.9.9 // indirect

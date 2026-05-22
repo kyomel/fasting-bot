@@ -62,7 +62,7 @@ Domain tidak bergantung pada layer lainnya.
 
 - Go 1.22+
 - SQLite3
-- Nomor WhatsApp untuk bot (+6285111334509)
+- Nomor WhatsApp untuk bot (isi di `.env`)
 
 ### 1. Install Dependencies
 
@@ -102,7 +102,7 @@ Saat pertama kali running, bot akan menampilkan **QR code di terminal**:
 ```
 
 **Cara scan:**
-1. Buka WhatsApp di HP (nomor bot: +6285111334509)
+1. Buka WhatsApp di HP (nomor bot: sesuai `.env` kamu)
 2. Pergi ke: **Settings → Linked Devices → Link a Device**
 3. Arahkan kamera HP ke QR code di terminal
 4. Tunggu hingga muncul "✅ Login successful!"

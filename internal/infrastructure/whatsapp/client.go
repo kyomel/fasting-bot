@@ -81,10 +81,13 @@ func NewClient() (*Client, error) {
 					qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
 					fmt.Println()
 
-					qrcode.WriteFile(evt.Code, qrcode.Medium, 512, "/opt/fasting-bot/data/qr-code.png")
-
-					fmt.Println("💾 Saved: /opt/fasting-bot/data/qr-code.png")
-					fmt.Println("   scp root@103.169.206.19:/opt/fasting-bot/data/qr-code.png ./qr-code.png")
+					if config.QRCodePath != "" {
+						qrcode.WriteFile(evt.Code, qrcode.Medium, 512, config.QRCodePath)
+						fmt.Println("💾 Saved: " + config.QRCodePath)
+						if config.QRCodeHost != "" {
+							fmt.Printf("   scp %s:%s ./qr-code.png\n", config.QRCodeHost, config.QRCodePath)
+						}
+					}
 					fmt.Println("⏱️  QR ini expired ~60 detik, tapi akan regenerate otomatis.")
 					fmt.Println()
 
