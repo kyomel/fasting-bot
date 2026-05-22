@@ -170,7 +170,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 	if now.Before(startTime) {
 		status = fmt.Sprintf("⏳ Fasting dimulai dalam %s", formatDuration(startTime.Sub(now)))
 	} else if now.Before(endTime) {
-		status = fmt.Sprintf("🍽️ Sedang fasting! Sisa %s", formatDuration(endTime.Sub(now)))
+		status = fmt.Sprintf("🍽️ Sedang fasting!\nSudah berjalan: %s\nSisa: %s", formatDuration(now.Sub(startTime)), formatDuration(endTime.Sub(now)))
 	} else {
 		status = "✅ Fasting hari ini sudah selesai!"
 	}
@@ -269,6 +269,9 @@ func (u *fastingUsecase) GetStats(phone string) (string, error) {
 		}
 		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
+	if err := u.refreshStaleCurrentStreaks(); err != nil {
+		return "", fmt.Errorf("gagal memperbarui streak puasa: %w", err)
+	}
 
 	stats, err := u.scheduleRepo.FindFastingStatsByUserID(user.ID)
 	if err != nil {
@@ -281,10 +284,14 @@ func (u *fastingUsecase) GetStats(phone string) (string, error) {
 		return "📊 *Stats Puasa*\nBelum ada hasil puasa yang tercatat.\n\nGunakan /buka setelah puasa dimulai supaya durasi masuk ke stats.", nil
 	}
 
-	return fmt.Sprintf("📊 *Stats Puasa %s*\nTotal sesi: %d\nStreak saat ini: %d hari\nStreak terpanjang: %d hari\nTotal waktu puasa: %s\n\nTerakhir buka: %s\nDurasi terakhir: %s", stats.Name, stats.TotalSessions, stats.CurrentStreakDays, stats.LongestStreakDays, formatDurationWithDays(stats.TotalMinutes), formatScheduleDisplay(stats.LastOpenedAt), formatDurationWithDays(stats.LastDurationMinutes)), nil
+	return fmt.Sprintf("📊 *Stats Puasa %s*\nTotal sesi: %d\nStreak puasa saat ini: %d hari\nStreak puasa terpanjang: %d hari\nTotal waktu puasa: %s\n\nTerakhir buka: %s\nDurasi terakhir: %s", stats.Name, stats.TotalSessions, stats.CurrentStreakDays, stats.LongestStreakDays, formatDurationWithDays(stats.TotalMinutes), formatScheduleDisplay(stats.LastOpenedAt), formatDurationWithDays(stats.LastDurationMinutes)), nil
 }
 
 func (u *fastingUsecase) GetLeaderboard() (string, error) {
+	if err := u.refreshStaleCurrentStreaks(); err != nil {
+		return "", fmt.Errorf("gagal memperbarui streak puasa: %w", err)
+	}
+
 	entries, err := u.scheduleRepo.FindFastingLeaderboard()
 	if err != nil {
 		return "", fmt.Errorf("gagal mengambil leaderboard: %w", err)
@@ -301,7 +308,7 @@ func (u *fastingUsecase) GetLeaderboard() (string, error) {
 	result := "🏆 *Leaderboard Puasa*\nPatokan ranking: total waktu puasa\n\n"
 	for i := 0; i < limit; i++ {
 		entry := entries[i]
-		result += fmt.Sprintf("%d. %s\n   Streak: %d hari\n   Total: %s\n", i+1, entry.Name, entry.CurrentStreakDays, formatDurationWithDays(entry.TotalMinutes))
+		result += fmt.Sprintf("%d. %s\n   Streak puasa: %d hari\n   Total: %s\n", i+1, entry.Name, entry.CurrentStreakDays, formatDurationWithDays(entry.TotalMinutes))
 		if i < limit-1 {
 			result += "\n"
 		}
@@ -343,17 +350,17 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 		fastHours = durationHours
 		fastingTypeName = fmt.Sprintf("Water Fasting %d jam", durationHours)
 	case 9:
-		if durationHours < 24 {
-			return "❌ Water Fasting bebas minimal 24 jam.", nil
-		}
-		fastHours = durationHours
-		fastingTypeName = fmt.Sprintf("Water Fasting %d jam", durationHours)
-	case 10:
 		if durationHours < 1 {
 			return "❌ Durasi Dry Fasting harus minimal 1 jam.", nil
 		}
 		fastHours = durationHours
 		fastingTypeName = fmt.Sprintf("Dry Fasting %d jam", durationHours)
+	case 10:
+		if durationHours < 24 {
+			return "❌ Prolonged Fasting metode water fasting minimal 24 jam.", nil
+		}
+		fastHours = durationHours
+		fastingTypeName = fmt.Sprintf("Prolonged Fasting (Water) %d jam", durationHours)
 	}
 	endDateTime := calculateEndDateTime(startDateTime, fastHours)
 
@@ -447,6 +454,11 @@ func nextStartFromClock(value string) (time.Time, error) {
 
 func calculateEndDateTime(start time.Time, hours int) time.Time {
 	return start.Add(time.Duration(hours) * time.Hour)
+}
+
+func (u *fastingUsecase) refreshStaleCurrentStreaks() error {
+	now := time.Now().In(config.Location)
+	return u.scheduleRepo.ResetStaleCurrentStreaks(now.Format("2006-01-02"), formatStoredTime(now))
 }
 
 func formatStoredTime(t time.Time) string {

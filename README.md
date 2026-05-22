@@ -152,7 +152,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
 | `/jadwalkan <WF\|DF> <tanggal> <jam> <durasi>` | Jadwalkan Water/Dry Fasting freestyle | `/jadwalkan WF 23-05-2026 16:00 12` |
-| `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai | `/status` |
+| `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan | `/status` |
 | `/buka` | Buka puasa / batalkan fasting. Jika puasa sudah mulai, durasi dicatat ke stats | `/buka` |
 | `/hapus` | Hapus jadwal puasa aktif. Setelah dihapus, `/status` akan menampilkan belum ada jadwal fasting | `/hapus` |
 | `/stats` | Lihat statistik hasil buka puasa pribadi | `/stats` |
@@ -174,8 +174,8 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 | 6 | OMAD-1 | 22 jam | `/set-puasa 6 05:00` |
 | 7 | OMAD-2 | 23 jam | `/set-puasa 7 05:00` |
 | 8 | Water Fasting | 24/36/48/72 jam | `/set-puasa 8 05:00 48` |
-| 9 | Water Fasting (Bebas) | >24 jam bebas | `/set-puasa 9 05:00 96` |
-| 10 | Dry Fasting | Bebas tentukan | `/set-puasa 10 05:00 18` |
+| 9 | Dry Fasting | Bebas tentukan | `/set-puasa 9 05:00 18` |
+| 10 | Prolonged Fasting (Bebas) | Metode water fasting, minimal 24 jam | `/set-puasa 10 05:00 96` |
 
 ### Cara Menggunakan
 
@@ -183,14 +183,15 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 2. Pilih jenis IF & OMAD (1-7): `/set-puasa <nomor> <jam_mulai>`
    - Contoh: `/set-puasa 3 05:00` → Puasa jam 05:00 - 21:00 (16 jam)
    - Contoh: `/set-puasa 6 05:00` → Puasa jam 05:00 - 03:00 (22 jam)
-3. Pilih Water/Dry Fasting (8-10): `/set-puasa <nomor> <jam_mulai> <durasi_jam>`
+3. Pilih Water/Dry/Prolonged Fasting (8-10): `/set-puasa <nomor> <jam_mulai> <durasi_jam>`
    - Contoh: `/set-puasa 8 05:00 48` → Water Fasting 48 jam dari jam 05:00
-   - Contoh: `/set-puasa 10 05:00 18` → Dry Fasting 18 jam dari jam 05:00
+   - Contoh: `/set-puasa 9 05:00 18` → Dry Fasting 18 jam dari jam 05:00
+   - Contoh: `/set-puasa 10 05:00 96` → Prolonged Fasting metode water fasting 96 jam dari jam 05:00
 4. Jadwalkan WF/DF freestyle dengan tanggal: `/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`
    - Contoh: `/jadwalkan WF 23-05-2026 16:00 12` → Water Fasting 12 jam dari 23-05-2026 16:00 sampai 24-05-2026 04:00
    - Contoh: `/jadwalkan DF 23-05-2026 20:00 10` → Dry Fasting 10 jam dari 23-05-2026 20:00 sampai 24-05-2026 06:00
 5. Cek status jadwal: `/status`
-   - Status menampilkan jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai.
+   - Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan jika sedang berjalan akan menampilkan sudah berjalan berapa lama.
 6. Buka puasa: `/buka`
    - Jika puasa sudah mulai, bot mencatat total waktu puasa ke `/stats` dalam format hari, jam, dan menit.
    - Jika `/buka` dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
@@ -202,6 +203,7 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 Catatan waktu:
 - Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
+- Streak puasa dihitung dari tanggal kalender lokal saat puasa berjalan. Jika ada satu hari kalender tanpa puasa berjalan, streak saat ini otomatis kembali ke 0 saat `/stats` atau `/leaderboard` dibuka.
 - `/stats` hanya menghitung hasil puasa dari `/buka` setelah puasa dimulai.
 - Progres total `/stats` dan `/leaderboard` disimpan di ringkasan permanen, sehingga riwayat mentah lama bisa dibersihkan tanpa mengurangi total user.
 - Bot membersihkan riwayat mentah lama dan jadwal nonaktif lama setiap 3 hari agar database tetap ringan. Cleanup akan melewati user yang masih punya jadwal puasa aktif.

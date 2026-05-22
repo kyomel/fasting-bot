@@ -22,14 +22,17 @@ ALUR PALING SEDERHANA
    Contoh untuk IF 16:8:
    /set-puasa 3 05:00
 
-4. Untuk Water Fasting atau Dry Fasting, tambahkan durasi jam:
+4. Untuk Water Fasting, Dry Fasting, atau Prolonged Fasting, tambahkan durasi jam:
    /set-puasa <nomor> <jam_mulai> <durasi_jam>
 
    Contoh Water Fasting 48 jam:
    /set-puasa 8 05:00 48
 
    Contoh Dry Fasting 18 jam:
-   /set-puasa 10 05:00 18
+   /set-puasa 9 05:00 18
+
+   Contoh Prolonged Fasting metode water fasting 96 jam:
+   /set-puasa 10 05:00 96
 
 5. Jika ingin menjadwalkan puasa freestyle dengan tanggal khusus:
    /jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
@@ -95,13 +98,13 @@ DAFTAR JENIS PUASA SAAT INI
    Puasa air - pilih durasi 24, 36, 48, atau 72 jam
    Cara set: /set-puasa 8 05:00 48
 
-9. Water Fasting (Bebas)
-   Puasa air bebas, minimal 24 jam
-   Cara set: /set-puasa 9 05:00 96
+9. Dry Fasting
+   Puasa kering - bebas tentukan durasi
+   Cara set: /set-puasa 9 05:00 18
 
-10. Dry Fasting
-    Puasa kering - bebas tentukan durasi
-    Cara set: /set-puasa 10 05:00 18
+10. Prolonged Fasting (Bebas)
+    Puasa panjang metode water fasting, minimal 24 jam
+    Cara set: /set-puasa 10 05:00 96
 
 
 PUASA FREESTYLE DENGAN /jadwalkan
@@ -155,7 +158,7 @@ Pilih jenis puasa dari daftar.
 Jadwalkan Water Fasting atau Dry Fasting freestyle dengan tanggal dan durasi sendiri.
 
 /status
-Cek status akun dan jadwal puasa. Status menampilkan jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai.
+Cek status akun dan jadwal puasa. Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan jika puasa sudah mulai.
 
 /buka
 Batalkan atau buka puasa hari ini. Jika puasa sudah mulai, bot mencatat total waktu puasa dalam format hari, jam, dan menit ke /stats.
@@ -167,7 +170,7 @@ Hapus jadwal puasa aktif. Setelah dihapus, /status akan menampilkan belum ada ja
 Lihat statistik hasil /buka: total sesi, streak puasa, total waktu puasa, dan durasi terakhir.
 
 /leaderboard
-Lihat klasemen puasa berdasarkan total waktu puasa. Klasemen menampilkan nama user, streak hari puasa, dan total waktu puasa.
+Lihat klasemen puasa berdasarkan total waktu puasa. Klasemen menampilkan nama user, streak puasa, dan total waktu puasa.
 
 /help
 Tampilkan bantuan dari bot.
@@ -182,8 +185,8 @@ CATATAN FORMAT
 - Nomor puasa harus sesuai daftar 1-10.
 - Nomor 1-7 tidak perlu isi durasi karena durasinya sudah tetap.
 - Nomor 8 harus memakai durasi 24, 36, 48, atau 72 jam.
-- Nomor 9 minimal 24 jam.
-- Nomor 10 minimal 1 jam.
+- Nomor 9 minimal 1 jam.
+- Nomor 10 adalah Prolonged Fasting metode water fasting, minimal 24 jam.
 - Untuk /jadwalkan, format tanggal adalah DD-MM-YYYY, contoh: 23-05-2026.
 - Untuk /jadwalkan, jenis puasa hanya WF atau DF.
 - Untuk /jadwalkan, tanggal dan jam mulai harus setelah waktu sekarang.
@@ -195,5 +198,6 @@ CATATAN FORMAT
 - /stats hanya menampilkan hasil puasa yang sudah dicatat lewat /buka setelah puasa dimulai. Data progres total disimpan sebagai ringkasan permanen, bukan bergantung pada riwayat mentah.
 - /leaderboard diurutkan berdasarkan total waktu puasa terbesar dan memakai data ringkasan permanen.
 - Bot menjalankan pembersihan otomatis setiap 3 hari untuk menghapus riwayat mentah lama dan jadwal nonaktif lama supaya database tetap ringan. Pembersihan ini tidak mengurangi total /stats atau /leaderboard, dan tidak menghapus data user yang masih punya jadwal puasa aktif.
-- Balasan bot dan /status akan menampilkan jenis puasa, tanggal dan jam mulai, serta tanggal dan jam selesai agar mudah dipahami.
+- Streak puasa dihitung dari tanggal kalender lokal saat puasa berjalan. Jika ada satu hari kalender tanpa puasa berjalan, streak saat ini otomatis kembali ke 0 saat /stats atau /leaderboard dibuka.
+- Balasan bot dan /status akan menampilkan jenis puasa, tanggal dan jam mulai, tanggal dan jam selesai, serta durasi berjalan jika puasa sudah mulai agar mudah dipahami.
 - Gunakan /hapus jika ingin menghapus jadwal aktif supaya /status tidak lagi menampilkan jadwal puasa.

@@ -18,8 +18,8 @@ var FastingTypes = []FastingType{
 	{ID: 6, Name: "OMAD-1", Description: "One Meal A Day - Puasa 22 jam", FastHours: 22},
 	{ID: 7, Name: "OMAD-2", Description: "One Meal A Day - Puasa 23 jam", FastHours: 23},
 	{ID: 8, Name: "Water Fasting", Description: "Puasa air - 24, 36, 48, atau 72 jam", FastHours: 0},
-	{ID: 9, Name: "Water Fasting (Bebas)", Description: "Puasa air bebas (minimal 24 jam)", FastHours: 0},
-	{ID: 10, Name: "Dry Fasting", Description: "Puasa kering - bebas tentukan durasi", FastHours: 0},
+	{ID: 9, Name: "Dry Fasting", Description: "Puasa kering - bebas tentukan durasi", FastHours: 0},
+	{ID: 10, Name: "Prolonged Fasting (Bebas)", Description: "Puasa panjang metode water fasting, minimal 24 jam", FastHours: 0},
 }
 
 func GetFastingTypeByID(id int) (*FastingType, error) {
@@ -39,19 +39,14 @@ func GetFastingTypesList() string {
 		} else if ft.ID == 8 {
 			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Pilih: 24, 36, 48, atau 72 jam_\n\n", ft.ID, ft.Name, ft.Description)
 		} else if ft.ID == 9 {
-			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Tentukan durasi sendiri (minimal 24 jam)_\n\n", ft.ID, ft.Name, ft.Description)
-		} else {
 			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Tentukan durasi sendiri_\n\n", ft.ID, ft.Name, ft.Description)
+		} else {
+			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Tentukan durasi sendiri (minimal 24 jam)_\n\n", ft.ID, ft.Name, ft.Description)
 		}
 	}
 	result += "*Cara pakai singkat:*\n"
-	result += "1. Pilih nomor puasa dari daftar di atas.\n"
-	result += "2. Kirim: `/set-puasa <nomor> <jam_mulai>`\n"
-	result += "   Contoh: `/set-puasa 3 05:00`\n"
-	result += "3. Untuk nomor 8-10, tambahkan durasi jam.\n"
-	result += "   Contoh: `/set-puasa 8 05:00 48`\n\n"
-	result += "*Freestyle WF/DF dengan tanggal:*\n"
-	result += "`/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`\n"
-	result += "Contoh: `/jadwalkan WF 23-05-2026 16:00 12`"
+	result += "• IF/OMAD: `/set-puasa <nomor> <jam_mulai>` contoh `/set-puasa 3 05:00`\n"
+	result += "• Water/Dry/Prolonged: `/set-puasa <nomor> <jam_mulai> <durasi_jam>` contoh `/set-puasa 8 05:00 48`\n"
+	result += "• Jadwal tanggal khusus WF/DF: `/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwalkan WF 23-05-2026 16:00 12`"
 	return result
 }

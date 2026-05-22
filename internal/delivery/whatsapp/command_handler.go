@@ -175,7 +175,7 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 
 func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, error) {
 	if len(args) < 2 {
-		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry Fasting (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48\n\nFreestyle WF/DF dengan tanggal: /jadwalkan WF 23-05-2026 16:00 12", nil
+		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry/Prolonged (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48\n\nJadwal tanggal khusus WF/DF: /jadwalkan WF 23-05-2026 16:00 12", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])

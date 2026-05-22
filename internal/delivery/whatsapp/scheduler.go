@@ -78,7 +78,7 @@ func (s *Scheduler) checkAndNotify() {
 	}
 
 	for _, t := range targets {
-		msg := fmt.Sprintf("✅ *Fasting Selesai!*\nPuasa kamu sudah selesai. Saatnya berbuka! 🎉\nFasting dari %s - %s", formatScheduleForMessage(t.FastStart), formatScheduleForMessage(t.FastEnd))
+		msg := fmt.Sprintf("✅ *Waktu Puasa Berakhir!*\nHalo %s, jadwal puasa kamu sudah sampai waktu selesai.\nMulai: %s\nSelesai: %s\n\nIni hanya pengingat jam puasa berakhir. Jika kamu sudah benar-benar berbuka, kirim /buka supaya durasinya masuk ke /stats.", t.Name, formatScheduleForMessage(t.FastStart), formatScheduleForMessage(t.FastEnd))
 		if err := s.notifier.Send(t.JID, msg); err != nil {
 			fmt.Printf("❌ Failed to send end notification: %v\n", err)
 			continue
