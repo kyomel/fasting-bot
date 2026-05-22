@@ -113,7 +113,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 
 **Test di DM (nomor pribadi kamu):**
 ```
-/daftar
+/daftar kyomel
 /list-puasa
 /set-puasa 3 05:00
 /status
@@ -123,7 +123,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 1. Invite bot ke grup (dari HP pribadi)
 2. Kirim command di grup:
 ```
-/daftar
+/daftar kyomel
 /list-puasa
 /set-puasa 3 05:00
 /status
@@ -144,7 +144,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 
 | Command | Deskripsi | Contoh |
 |---|---|---|
-| `/daftar` | Daftar sebagai user | `/daftar` |
+| `/daftar [nama]` | Daftar sebagai user dengan nama opsional | `/daftar kyomel` |
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
 | `/status` | Cek status fasting | `/status` |

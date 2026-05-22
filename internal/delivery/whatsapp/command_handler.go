@@ -80,19 +80,19 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 }
 
 func (h *CommandHandler) processCommand(phone, jid, text string) string {
-	text = strings.TrimSpace(strings.ToLower(text))
+	text = strings.TrimSpace(text)
 	parts := strings.Fields(text)
 
 	if len(parts) == 0 {
 		return ""
 	}
 
-	command := parts[0]
+	command := strings.ToLower(parts[0])
 	args := parts[1:]
 
 	switch command {
 	case "/daftar", "/register":
-		resp, _ := h.usecase.RegisterUser(phone, jid)
+		resp, _ := h.usecase.RegisterUser(phone, jid, strings.Join(args, " "))
 		return resp
 	case "/list-puasa":
 		return domain.GetFastingTypesList()

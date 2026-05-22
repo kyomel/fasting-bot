@@ -9,7 +9,7 @@ import (
 )
 
 type FastingUsecase interface {
-	RegisterUser(phone, jid string) (string, error)
+	RegisterUser(phone, jid, name string) (string, error)
 	SetSchedule(phone, start, end string) (string, error)
 	GetStatus(phone string) (string, error)
 	CancelToday(phone string) (string, error)
@@ -34,21 +34,27 @@ func NewFastingUsecase(
 	}
 }
 
-func (u *fastingUsecase) RegisterUser(phone, jid string) (string, error) {
+func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 	_, err := u.userRepo.FindByPhone(phone)
 	if err == nil {
-		return "✅ Kamu sudah terdaftar! Kirim /jadwal untuk atur jadwal fasting.", nil
+		return "✅ Kamu sudah terdaftar! Kirim /list-puasa untuk melihat daftar fasting.", nil
 	}
 
 	user := &domain.User{
 		Phone: phone,
+		Name:  name,
 		JID:   jid,
 	}
 	if err := u.userRepo.Create(user); err != nil {
 		return "", fmt.Errorf("gagal mendaftar: %w", err)
 	}
 
-	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nNomor: %s\n\nSekarang pilih jenis puasa dengan:\n/list-puasa\n/set-puasa <nomor> <jam_mulai>\n\nContoh: /set-puasa 3 05:00", phone), nil
+	registeredAs := phone
+	if name != "" {
+		registeredAs = name
+	}
+
+	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nNama: %s\nNomor: %s\n\nSekarang pilih jenis puasa dengan:\n/list-puasa\n/set-puasa <nomor> <jam_mulai>\n\nContoh: /set-puasa 3 05:00", registeredAs, phone), nil
 }
 
 func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
