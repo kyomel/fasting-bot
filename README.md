@@ -144,10 +144,11 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 
 | Command | Deskripsi | Contoh |
 |---|---|---|
-| `/daftar [nama]` | Daftar sebagai user dengan nama opsional | `/daftar kyomel` |
+| `/daftar <nama>` | Daftar sebagai user. Jika nomor WhatsApp sudah terdaftar, bot akan menolak pendaftaran ulang | `/daftar kyomel` |
+| `/setname <nama>` | Ubah nama user yang sudah terdaftar | `/setname kyomel baru` |
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
-| `/status` | Cek status fasting | `/status` |
+| `/status` | Cek status fasting, nama, nomor, dan ID user yang terdaftar | `/status` |
 | `/buka` | Buka puasa / batalkan fasting | `/buka` |
 | `/help` | Tampilkan bantuan | `/help` |
 | `/info` | Info bot | `/info` |

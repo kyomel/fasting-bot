@@ -10,6 +10,7 @@ import (
 
 type FastingUsecase interface {
 	RegisterUser(phone, jid, name string) (string, error)
+	SetName(phone, name string) (string, error)
 	SetSchedule(phone, start, end string) (string, error)
 	GetStatus(phone string) (string, error)
 	CancelToday(phone string) (string, error)
@@ -35,9 +36,9 @@ func NewFastingUsecase(
 }
 
 func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
-	_, err := u.userRepo.FindByPhone(phone)
-	if err == nil {
-		return "✅ Kamu sudah terdaftar! Kirim /list-puasa untuk melihat daftar fasting.", nil
+	existingUser, err := u.userRepo.FindByPhone(phone)
+	if err == nil && existingUser.ID > 0 {
+		return "✅ Akun anda sudah terdaftar. Gunakan /setname <nama> untuk mengubah nama.", nil
 	}
 
 	user := &domain.User{
@@ -55,6 +56,23 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 	}
 
 	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nNama: %s\nNomor: %s\n\nSekarang pilih jenis puasa dengan:\n/list-puasa\n/set-puasa <nomor> <jam_mulai>\n\nContoh: /set-puasa 3 05:00", registeredAs, phone), nil
+}
+
+func (u *fastingUsecase) SetName(phone, name string) (string, error) {
+	if name == "" {
+		return "❌ Format salah. Gunakan: /setname <nama>", nil
+	}
+
+	user, err := u.userRepo.FindByPhone(phone)
+	if err != nil || user.ID == 0 {
+		return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+	}
+
+	if err := u.userRepo.UpdateName(user.ID, name); err != nil {
+		return "", fmt.Errorf("gagal mengubah nama: %w", err)
+	}
+
+	return fmt.Sprintf("✅ Nama berhasil diubah menjadi: %s", name), nil
 }
 
 func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
@@ -97,7 +115,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 
 	schedule, err := u.scheduleRepo.FindActiveByUserID(user.ID)
 	if err != nil {
-		return "📋 *Status Fasting*\nBelum ada jadwal.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", nil
+		return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", user.ID, name, user.Phone), nil
 	}
 
 	now := time.Now()
@@ -116,7 +134,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 		status = "✅ Fasting hari ini sudah selesai!"
 	}
 
-	return fmt.Sprintf("📋 *Status Fasting*\nUser: %s\nJadwal: %s - %s\n\n%s", name, schedule.FastStart, schedule.FastEnd, status), nil
+	return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\nJadwal: %s - %s\n\n%s", user.ID, name, user.Phone, schedule.FastStart, schedule.FastEnd, status), nil
 }
 
 func (u *fastingUsecase) CancelToday(phone string) (string, error) {

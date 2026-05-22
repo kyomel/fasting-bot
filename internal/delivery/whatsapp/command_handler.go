@@ -94,6 +94,9 @@ func (h *CommandHandler) processCommand(phone, jid, text string) string {
 	case "/daftar", "/register":
 		resp, _ := h.usecase.RegisterUser(phone, jid, strings.Join(args, " "))
 		return resp
+	case "/setname":
+		resp, _ := h.usecase.SetName(phone, strings.Join(args, " "))
+		return resp
 	case "/list-puasa":
 		return domain.GetFastingTypesList()
 	case "/set-puasa":
@@ -140,7 +143,8 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) string {
 func getHelpText() string {
 	return `🤖 *Fasting Bot - Daftar Perintah*
 
-/daftar - Daftar sebagai user
+/daftar <nama> - Daftar sebagai user
+/setname <nama> - Ubah nama user
 /list-puasa - Lihat jenis-jenis puasa
 /set-puasa <nomor> <jam> [durasi] - Pilih jenis puasa
 /status - Cek status fasting hari ini
@@ -148,6 +152,8 @@ func getHelpText() string {
 /help - Tampilkan bantuan ini
 
 Contoh:
+/daftar kyomel
+/setname kyomel baru
 /set-puasa 3 05:00
 /set-puasa 6 05:00
 /set-puasa 8 05:00 48

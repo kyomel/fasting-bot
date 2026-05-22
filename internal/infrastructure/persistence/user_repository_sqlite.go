@@ -27,6 +27,14 @@ func (r *UserRepositorySQLite) Create(user *domain.User) error {
 	return nil
 }
 
+func (r *UserRepositorySQLite) UpdateName(userID int64, name string) error {
+	_, err := r.db.Exec(
+		"UPDATE users SET name = ? WHERE id = ?",
+		name, userID,
+	)
+	return err
+}
+
 func (r *UserRepositorySQLite) FindByPhone(phone string) (*domain.User, error) {
 	var user domain.User
 	err := r.db.QueryRow(

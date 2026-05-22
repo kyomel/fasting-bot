@@ -6,6 +6,7 @@ import (
 
 type UserRepository interface {
 	Create(user *domain.User) error
+	UpdateName(userID int64, name string) error
 	FindByPhone(phone string) (*domain.User, error)
 	FindByID(id int64) (*domain.User, error)
 }
