@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,9 +38,21 @@ func NewFastingUsecase(
 }
 
 func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
+	if name == "" {
+		return "❌ Nama harus diisi. Gunakan: /daftar <nama>\nContoh: /daftar kyomel", nil
+	}
+
 	existingUser, err := u.userRepo.FindByPhone(phone)
-	if err == nil && existingUser.ID > 0 {
-		return "✅ Akun anda sudah terdaftar. Gunakan /setname <nama> untuk mengubah nama.", nil
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+	}
+
+	if existingUser != nil && existingUser.ID > 0 {
+		registeredName := existingUser.Name
+		if registeredName == "" {
+			registeredName = existingUser.Phone
+		}
+		return fmt.Sprintf("✅ Akun sudah terdaftar!\nID: %d\nNama: %s\nNomor: %s\n\nGunakan /setname <nama> untuk mengubah nama.", existingUser.ID, registeredName, existingUser.Phone), nil
 	}
 
 	user := &domain.User{
@@ -50,22 +64,20 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 		return "", fmt.Errorf("gagal mendaftar: %w", err)
 	}
 
-	registeredAs := phone
-	if name != "" {
-		registeredAs = name
-	}
-
-	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nNama: %s\nNomor: %s\n\nSekarang pilih jenis puasa dengan:\n/list-puasa\n/set-puasa <nomor> <jam_mulai>\n\nContoh: /set-puasa 3 05:00", registeredAs, phone), nil
+	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nID: %d\nNama: %s\nNomor: %s\n\nSekarang pilih jenis puasa:\n/list-puasa\n/set-puasa <nomor> <jam_mulai>\n\nContoh: /set-puasa 3 05:00", user.ID, name, phone), nil
 }
 
 func (u *fastingUsecase) SetName(phone, name string) (string, error) {
 	if name == "" {
-		return "❌ Format salah. Gunakan: /setname <nama>", nil
+		return "❌ Nama harus diisi. Gunakan: /setname <nama baru>\nContoh: /setname kyomel baru", nil
 	}
 
 	user, err := u.userRepo.FindByPhone(phone)
-	if err != nil || user.ID == 0 {
-		return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+		}
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
 
 	if err := u.userRepo.UpdateName(user.ID, name); err != nil {
@@ -85,7 +97,10 @@ func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
 
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
-		return "❌ Kamu belum terdaftar. Kirim /daftar dulu.", nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+		}
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
 
 	u.scheduleRepo.DeactivateByUserID(user.ID)
@@ -105,7 +120,10 @@ func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
 func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
-		return "❌ Kamu belum terdaftar. Kirim /daftar dulu.", nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+		}
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
 
 	name := user.Name
@@ -115,7 +133,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 
 	schedule, err := u.scheduleRepo.FindActiveByUserID(user.ID)
 	if err != nil {
-		return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", user.ID, name, user.Phone), nil
+		return fmt.Sprintf("📋 *Status Akun*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal fasting.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", user.ID, name, user.Phone), nil
 	}
 
 	now := time.Now()
@@ -140,7 +158,10 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 func (u *fastingUsecase) CancelToday(phone string) (string, error) {
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
-		return "❌ Kamu belum terdaftar.", nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+		}
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
 
 	if err := u.notificationRepo.LogNotification(user.ID, "cancelled"); err != nil {
@@ -162,7 +183,10 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
-		return "❌ Kamu belum terdaftar. Kirim /daftar dulu.", nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+		}
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
 
 	var endTime string

@@ -13,10 +13,14 @@ type DB struct {
 }
 
 func New() (*DB, error) {
-	conn, err := sql.Open("sqlite3", config.DatabasePath)
+	conn, err := sql.Open("sqlite3", config.DatabasePath+"?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
+	// Connection pool — SQLite supports max 1 writer but multiple readers in WAL mode
+	conn.SetMaxOpenConns(1)
+	conn.SetMaxIdleConns(1)
 
 	if err := conn.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -64,6 +68,9 @@ func migrate(conn *sql.DB) error {
 			name TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);`,
+		`CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);`,
+		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_user_active ON fasting_schedules(user_id, is_active);`,
+		`CREATE INDEX IF NOT EXISTS idx_notification_logs_user ON notification_logs(user_id);`,
 	}
 
 	for _, query := range queries {

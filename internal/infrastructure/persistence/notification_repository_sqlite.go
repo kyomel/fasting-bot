@@ -6,17 +6,17 @@ import (
 )
 
 type NotificationRepositorySQLite struct {
-	db *sql.DB
+	db          *sql.DB
+	logNotifStmt *sql.Stmt
 }
 
 func NewNotificationRepository(db *sql.DB) repository.NotificationRepository {
-	return &NotificationRepositorySQLite{db: db}
+	r := &NotificationRepositorySQLite{db: db}
+	r.logNotifStmt, _ = db.Prepare("INSERT INTO notification_logs (user_id, notification_type) VALUES (?, ?)")
+	return r
 }
 
 func (r *NotificationRepositorySQLite) LogNotification(userID int64, notificationType string) error {
-	_, err := r.db.Exec(
-		"INSERT INTO notification_logs (user_id, notification_type) VALUES (?, ?)",
-		userID, notificationType,
-	)
+	_, err := r.logNotifStmt.Exec(userID, notificationType)
 	return err
 }

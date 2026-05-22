@@ -3,6 +3,7 @@ package whatsapp
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -55,36 +56,39 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 	chat := msg.Info.Chat
 	isGroup := msg.Info.IsGroup
 
-	fmt.Printf("📩 Message from %s in %s (Group: %v): %s\n",
-		sender.User, chat.User, isGroup, text)
-
 	if msg.Info.IsFromMe {
 		return
 	}
 
 	phone := "+" + sender.User
-	response := h.processCommand(phone, sender.String(), text)
-	if response != "" {
-		replyTo := chat
-		if !isGroup {
-			replyTo = sender
-		}
+	response, err := h.processCommand(phone, sender.String(), text)
+	if err != nil {
+		log.Printf("[ERROR] processCommand(%s): %v", phone, err)
+	}
 
-		_, err := h.client.SendMessage(context.Background(), replyTo, &waProto.Message{
-			Conversation: proto.String(response),
-		})
-		if err != nil {
-			fmt.Printf("❌ Failed to send message: %v\n", err)
-		}
+	if response == "" {
+		return
+	}
+
+	replyTo := chat
+	if !isGroup {
+		replyTo = sender
+	}
+
+	_, sendErr := h.client.SendMessage(context.Background(), replyTo, &waProto.Message{
+		Conversation: proto.String(response),
+	})
+	if sendErr != nil {
+		log.Printf("[ERROR] SendMessage to %s: %v", replyTo.String(), sendErr)
 	}
 }
 
-func (h *CommandHandler) processCommand(phone, jid, text string) string {
+func (h *CommandHandler) processCommand(phone, jid, text string) (string, error) {
 	text = strings.TrimSpace(text)
 	parts := strings.Fields(text)
 
 	if len(parts) == 0 {
-		return ""
+		return "", nil
 	}
 
 	command := strings.ToLower(parts[0])
@@ -92,38 +96,64 @@ func (h *CommandHandler) processCommand(phone, jid, text string) string {
 
 	switch command {
 	case "/daftar", "/register":
-		resp, _ := h.usecase.RegisterUser(phone, jid, strings.Join(args, " "))
-		return resp
+		name := strings.Join(args, " ")
+		resp, err := h.usecase.RegisterUser(phone, jid, name)
+		if err != nil {
+			log.Printf("[ERROR] RegisterUser(%s): %v", phone, err)
+			return "❌ Terjadi kesalahan saat mendaftar. Coba lagi nanti.", nil
+		}
+		return resp, nil
+
 	case "/setname":
-		resp, _ := h.usecase.SetName(phone, strings.Join(args, " "))
-		return resp
+		name := strings.Join(args, " ")
+		resp, err := h.usecase.SetName(phone, name)
+		if err != nil {
+			log.Printf("[ERROR] SetName(%s): %v", phone, err)
+			return "❌ Terjadi kesalahan saat mengubah nama. Coba lagi nanti.", nil
+		}
+		return resp, nil
+
 	case "/list-puasa":
-		return domain.GetFastingTypesList()
+		return domain.GetFastingTypesList(), nil
+
 	case "/set-puasa":
 		return h.handleSetPuasa(phone, args)
+
 	case "/status":
-		resp, _ := h.usecase.GetStatus(phone)
-		return resp
+		resp, err := h.usecase.GetStatus(phone)
+		if err != nil {
+			log.Printf("[ERROR] GetStatus(%s): %v", phone, err)
+			return "❌ Terjadi kesalahan saat mengambil status. Coba lagi nanti.", nil
+		}
+		return resp, nil
+
 	case "/buka", "/cancel":
-		resp, _ := h.usecase.CancelToday(phone)
-		return resp
+		resp, err := h.usecase.CancelToday(phone)
+		if err != nil {
+			log.Printf("[ERROR] CancelToday(%s): %v", phone, err)
+			return "❌ Terjadi kesalahan saat membatalkan. Coba lagi nanti.", nil
+		}
+		return resp, nil
+
 	case "/help", "/bantuan":
-		return getHelpText()
+		return getHelpText(), nil
+
 	case "/info":
-		return fmt.Sprintf("🤖 *Fasting Bot*\nGrup: %s\nBot: %s", config.GroupName, config.BotNumber)
+		return fmt.Sprintf("🤖 *Fasting Bot*\nGrup: %s\nBot: %s", config.GroupName, config.BotNumber), nil
+
 	default:
-		return ""
+		return "", nil
 	}
 }
 
-func (h *CommandHandler) handleSetPuasa(phone string, args []string) string {
+func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, error) {
 	if len(args) < 2 {
-		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry Fasting (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48"
+		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry Fasting (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])
 	if err != nil || typeID < 1 || typeID > 10 {
-		return "❌ Nomor puasa tidak valid. Pilih 1-10. Kirim /list-puasa untuk melihat daftar."
+		return "❌ Nomor puasa tidak valid. Pilih 1-10. Kirim /list-puasa untuk melihat daftar.", nil
 	}
 
 	startTime := args[1]
@@ -132,12 +162,16 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) string {
 	if typeID >= 8 && len(args) >= 3 {
 		durationHours, err = strconv.Atoi(args[2])
 		if err != nil {
-			return "❌ Durasi jam harus angka."
+			return "❌ Durasi jam harus angka.", nil
 		}
 	}
 
-	resp, _ := h.usecase.SetFastingType(phone, typeID, startTime, durationHours)
-	return resp
+	resp, err := h.usecase.SetFastingType(phone, typeID, startTime, durationHours)
+	if err != nil {
+		log.Printf("[ERROR] SetFastingType(%s, %d): %v", phone, typeID, err)
+		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
+	}
+	return resp, nil
 }
 
 func getHelpText() string {
@@ -147,7 +181,7 @@ func getHelpText() string {
 /setname <nama> - Ubah nama user
 /list-puasa - Lihat jenis-jenis puasa
 /set-puasa <nomor> <jam> [durasi] - Pilih jenis puasa
-/status - Cek status fasting hari ini
+/status - Cek status akun & fasting
 /buka - Batalkan fasting hari ini
 /help - Tampilkan bantuan ini
 
@@ -155,7 +189,5 @@ Contoh:
 /daftar kyomel
 /setname kyomel baru
 /set-puasa 3 05:00
-/set-puasa 6 05:00
-/set-puasa 8 05:00 48
-/set-puasa 10 05:00 18`
+/set-puasa 8 05:00 48`
 }

@@ -7,18 +7,24 @@ import (
 )
 
 type ScheduleRepositorySQLite struct {
-	db *sql.DB
+	db                    *sql.DB
+	createStmt            *sql.Stmt
+	deactivateByUserIDStmt *sql.Stmt
+	findActiveByUserIDStmt *sql.Stmt
 }
 
 func NewScheduleRepository(db *sql.DB) repository.ScheduleRepository {
-	return &ScheduleRepositorySQLite{db: db}
+	r := &ScheduleRepositorySQLite{db: db}
+
+	r.createStmt, _ = db.Prepare("INSERT INTO fasting_schedules (user_id, fast_start, fast_end) VALUES (?, ?, ?)")
+	r.deactivateByUserIDStmt, _ = db.Prepare("UPDATE fasting_schedules SET is_active = 0 WHERE user_id = ?")
+	r.findActiveByUserIDStmt, _ = db.Prepare("SELECT id, user_id, fast_start, fast_end, is_active, created_at FROM fasting_schedules WHERE user_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1")
+
+	return r
 }
 
 func (r *ScheduleRepositorySQLite) Create(schedule *domain.FastingSchedule) error {
-	result, err := r.db.Exec(
-		"INSERT INTO fasting_schedules (user_id, fast_start, fast_end) VALUES (?, ?, ?)",
-		schedule.UserID, schedule.FastStart, schedule.FastEnd,
-	)
+	result, err := r.createStmt.Exec(schedule.UserID, schedule.FastStart, schedule.FastEnd)
 	if err != nil {
 		return err
 	}
@@ -28,19 +34,13 @@ func (r *ScheduleRepositorySQLite) Create(schedule *domain.FastingSchedule) erro
 }
 
 func (r *ScheduleRepositorySQLite) DeactivateByUserID(userID int64) error {
-	_, err := r.db.Exec(
-		"UPDATE fasting_schedules SET is_active = 0 WHERE user_id = ?",
-		userID,
-	)
+	_, err := r.deactivateByUserIDStmt.Exec(userID)
 	return err
 }
 
 func (r *ScheduleRepositorySQLite) FindActiveByUserID(userID int64) (*domain.FastingSchedule, error) {
 	var schedule domain.FastingSchedule
-	err := r.db.QueryRow(
-		"SELECT id, user_id, fast_start, fast_end, is_active, created_at FROM fasting_schedules WHERE user_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1",
-		userID,
-	).Scan(&schedule.ID, &schedule.UserID, &schedule.FastStart, &schedule.FastEnd, &schedule.IsActive, &schedule.CreatedAt)
+	err := r.findActiveByUserIDStmt.QueryRow(userID).Scan(&schedule.ID, &schedule.UserID, &schedule.FastStart, &schedule.FastEnd, &schedule.IsActive, &schedule.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
