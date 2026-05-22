@@ -71,7 +71,10 @@ func migrate(conn *sql.DB) error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);`,
 		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_user_active ON fasting_schedules(user_id, is_active);`,
+		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_active_start ON fasting_schedules(is_active, fast_start);`,
+		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_active_end ON fasting_schedules(is_active, fast_end);`,
 		`CREATE INDEX IF NOT EXISTS idx_notification_logs_user ON notification_logs(user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_notification_logs_user_type_sent ON notification_logs(user_id, notification_type, sent_at);`,
 	}
 
 	for _, query := range queries {

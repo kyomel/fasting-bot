@@ -342,8 +342,9 @@ func nextStartFromClock(value string) (time.Time, error) {
 	}
 
 	now := time.Now().In(config.Location)
+	nowMinute := now.Truncate(time.Minute)
 	candidate := time.Date(now.Year(), now.Month(), now.Day(), clock.Hour(), clock.Minute(), 0, 0, config.Location)
-	if !candidate.After(now) {
+	if candidate.Before(nowMinute) {
 		candidate = candidate.AddDate(0, 0, 1)
 	}
 	return candidate, nil

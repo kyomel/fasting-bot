@@ -172,6 +172,8 @@ CATATAN FORMAT
 - Untuk /jadwalkan, format tanggal adalah DD-MM-YYYY, contoh: 23-05-2026.
 - Untuk /jadwalkan, jenis puasa hanya WF atau DF.
 - Untuk /jadwalkan, tanggal dan jam mulai harus setelah waktu sekarang.
-- Untuk /set-puasa, jika jam mulai hari ini sudah lewat, bot otomatis menjadwalkan mulai besok di jam tersebut.
+- Untuk /set-puasa, jam mulai wajib waktu sekarang atau waktu ke depan. Jika jam mulai hari ini sudah lewat dari waktu sekarang, bot otomatis menjadwalkan mulai besok di jam tersebut.
+- Jika jam mulai /set-puasa sama dengan menit sekarang, bot menganggap jadwal mulai sekarang.
+- Saat waktu selesai puasa tiba, bot akan mengirim notifikasi bahwa puasa sudah selesai dan sudah waktunya berbuka.
 - Balasan bot dan /status akan menampilkan jenis puasa, tanggal dan jam mulai, serta tanggal dan jam selesai agar mudah dipahami.
 - Gunakan /hapus jika ingin menghapus jadwal aktif supaya /status tidak lagi menampilkan jadwal puasa.

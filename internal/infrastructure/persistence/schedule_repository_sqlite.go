@@ -55,7 +55,8 @@ func (r *ScheduleRepositorySQLite) FindUsersToNotifyStart(currentTime, currentDa
 		WHERE fs.is_active = 1
 		AND (
 			(
-				fs.fast_start = ?
+				length(fs.fast_start) = 5
+				AND fs.fast_start <= ?
 				AND NOT EXISTS (
 					SELECT 1 FROM notification_logs nl
 					WHERE nl.user_id = u.id
@@ -65,12 +66,13 @@ func (r *ScheduleRepositorySQLite) FindUsersToNotifyStart(currentTime, currentDa
 			)
 			OR
 			(
-				fs.fast_start = ?
+				length(fs.fast_start) > 5
+				AND fs.fast_start <= ?
 				AND NOT EXISTS (
 					SELECT 1 FROM notification_logs nl
 					WHERE nl.user_id = u.id
 					AND nl.notification_type = 'start'
-					AND strftime('%Y-%m-%d %H:%M', nl.sent_at) = fs.fast_start
+					AND strftime('%Y-%m-%d %H:%M', nl.sent_at) >= fs.fast_start
 				)
 			)
 		)
@@ -91,13 +93,8 @@ func (r *ScheduleRepositorySQLite) FindUsersToNotifyEnd(currentTime, currentDate
 		WHERE fs.is_active = 1
 		AND (
 			(
-				fs.fast_end = ?
-				AND EXISTS (
-					SELECT 1 FROM notification_logs nl
-					WHERE nl.user_id = u.id
-					AND nl.notification_type = 'start'
-					AND DATE(nl.sent_at) = ?
-				)
+				length(fs.fast_end) = 5
+				AND fs.fast_end <= ?
 				AND NOT EXISTS (
 					SELECT 1 FROM notification_logs nl2
 					WHERE nl2.user_id = u.id
@@ -107,22 +104,17 @@ func (r *ScheduleRepositorySQLite) FindUsersToNotifyEnd(currentTime, currentDate
 			)
 			OR
 			(
-				fs.fast_end = ?
-				AND EXISTS (
-					SELECT 1 FROM notification_logs nl
-					WHERE nl.user_id = u.id
-					AND nl.notification_type = 'start'
-					AND strftime('%Y-%m-%d %H:%M', nl.sent_at) = fs.fast_start
-				)
+				length(fs.fast_end) > 5
+				AND fs.fast_end <= ?
 				AND NOT EXISTS (
 					SELECT 1 FROM notification_logs nl2
 					WHERE nl2.user_id = u.id
 					AND nl2.notification_type = 'end'
-					AND strftime('%Y-%m-%d %H:%M', nl2.sent_at) = fs.fast_end
+					AND strftime('%Y-%m-%d %H:%M', nl2.sent_at) >= fs.fast_end
 				)
 			)
 		)
-	`, currentTime, currentDate, currentDate, currentDateTime)
+	`, currentTime, currentDate, currentDateTime)
 	if err != nil {
 		return nil, err
 	}

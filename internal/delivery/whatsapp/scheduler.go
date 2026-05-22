@@ -31,7 +31,10 @@ func NewScheduler(
 }
 
 func (s *Scheduler) Start() {
-	s.cron = cron.New(cron.WithLocation(config.Location))
+	s.cron = cron.New(
+		cron.WithLocation(config.Location),
+		cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)),
+	)
 	s.cron.AddFunc("* * * * *", s.checkAndNotify)
 	s.cron.Start()
 }
@@ -74,7 +77,7 @@ func (s *Scheduler) checkAndNotify() {
 	}
 
 	for _, t := range targets {
-		msg := fmt.Sprintf("✅ *Fasting Selesai!*\nSelamat berbuka! 🎉\nFasting dari %s - %s", formatScheduleForMessage(t.FastStart), formatScheduleForMessage(t.FastEnd))
+		msg := fmt.Sprintf("✅ *Fasting Selesai!*\nPuasa kamu sudah selesai. Saatnya berbuka! 🎉\nFasting dari %s - %s", formatScheduleForMessage(t.FastStart), formatScheduleForMessage(t.FastEnd))
 		if err := s.notifier.Send(t.JID, msg); err != nil {
 			fmt.Printf("❌ Failed to send end notification: %v\n", err)
 			continue
