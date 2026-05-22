@@ -138,6 +138,14 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 		}
 		return resp, nil
 
+	case "/hapus":
+		resp, err := h.usecase.DeleteSchedule(phone)
+		if err != nil {
+			log.Printf("[ERROR] DeleteSchedule(%s): %v", phone, err)
+			return "❌ Terjadi kesalahan saat menghapus jadwal. Coba lagi nanti.", nil
+		}
+		return resp, nil
+
 	case "/help", "/bantuan":
 		return getHelpText(), nil
 
@@ -206,6 +214,7 @@ func getHelpText() string {
 /jadwalkan <WF|DF> <tanggal> <jam> <durasi> - Jadwalkan puasa freestyle
 /status - Cek status akun & fasting
 /buka - Batalkan fasting hari ini
+/hapus - Hapus jadwal fasting aktif
 /help - Tampilkan bantuan ini
 
 Contoh:
@@ -213,5 +222,6 @@ Contoh:
 /setname kyomel baru
 /set-puasa 3 05:00
 /set-puasa 8 05:00 48
-/jadwalkan WF 23-05-2026 16:00 12`
+/jadwalkan WF 23-05-2026 16:00 12
+/hapus`
 }

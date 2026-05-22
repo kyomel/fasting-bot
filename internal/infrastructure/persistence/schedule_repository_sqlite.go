@@ -16,15 +16,15 @@ type ScheduleRepositorySQLite struct {
 func NewScheduleRepository(db *sql.DB) repository.ScheduleRepository {
 	r := &ScheduleRepositorySQLite{db: db}
 
-	r.createStmt, _ = db.Prepare("INSERT INTO fasting_schedules (user_id, fast_start, fast_end) VALUES (?, ?, ?)")
+	r.createStmt, _ = db.Prepare("INSERT INTO fasting_schedules (user_id, fast_start, fast_end, fasting_type_name) VALUES (?, ?, ?, ?)")
 	r.deactivateByUserIDStmt, _ = db.Prepare("UPDATE fasting_schedules SET is_active = 0 WHERE user_id = ?")
-	r.findActiveByUserIDStmt, _ = db.Prepare("SELECT id, user_id, fast_start, fast_end, is_active, created_at FROM fasting_schedules WHERE user_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1")
+	r.findActiveByUserIDStmt, _ = db.Prepare("SELECT id, user_id, fast_start, fast_end, fasting_type_name, is_active, created_at FROM fasting_schedules WHERE user_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1")
 
 	return r
 }
 
 func (r *ScheduleRepositorySQLite) Create(schedule *domain.FastingSchedule) error {
-	result, err := r.createStmt.Exec(schedule.UserID, schedule.FastStart, schedule.FastEnd)
+	result, err := r.createStmt.Exec(schedule.UserID, schedule.FastStart, schedule.FastEnd, schedule.FastingTypeName)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (r *ScheduleRepositorySQLite) DeactivateByUserID(userID int64) error {
 
 func (r *ScheduleRepositorySQLite) FindActiveByUserID(userID int64) (*domain.FastingSchedule, error) {
 	var schedule domain.FastingSchedule
-	err := r.findActiveByUserIDStmt.QueryRow(userID).Scan(&schedule.ID, &schedule.UserID, &schedule.FastStart, &schedule.FastEnd, &schedule.IsActive, &schedule.CreatedAt)
+	err := r.findActiveByUserIDStmt.QueryRow(userID).Scan(&schedule.ID, &schedule.UserID, &schedule.FastStart, &schedule.FastEnd, &schedule.FastingTypeName, &schedule.IsActive, &schedule.CreatedAt)
 	if err != nil {
 		return nil, err
 	}

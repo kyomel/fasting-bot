@@ -24,6 +24,7 @@ type FastingUsecase interface {
 	SetSchedule(phone, start, end string) (string, error)
 	GetStatus(phone string) (string, error)
 	CancelToday(phone string) (string, error)
+	DeleteSchedule(phone string) (string, error)
 	SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error)
 	ScheduleFreestyleFasting(phone, kind, dateInput, startTime string, durationHours int) (string, error)
 }
@@ -121,9 +122,10 @@ func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
 	u.scheduleRepo.DeactivateByUserID(user.ID)
 
 	schedule := &domain.FastingSchedule{
-		UserID:    user.ID,
-		FastStart: formatStoredTime(startTime),
-		FastEnd:   formatStoredTime(endTime),
+		UserID:          user.ID,
+		FastStart:       formatStoredTime(startTime),
+		FastEnd:         formatStoredTime(endTime),
+		FastingTypeName: "Manual",
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
 		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
@@ -150,6 +152,10 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 	if err != nil {
 		return fmt.Sprintf("📋 *Status Akun*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal fasting.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", user.ID, name, user.Phone), nil
 	}
+	fastingTypeName := schedule.FastingTypeName
+	if fastingTypeName == "" {
+		fastingTypeName = "Belum diketahui"
+	}
 
 	now := time.Now().In(config.Location)
 	startTime, startHasDate := parseScheduleTime(schedule.FastStart, now)
@@ -167,7 +173,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 		status = "✅ Fasting hari ini sudah selesai!"
 	}
 
-	return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\nJadwal: %s - %s\n\n%s", user.ID, name, user.Phone, formatScheduleDisplay(schedule.FastStart), formatScheduleDisplay(schedule.FastEnd), status), nil
+	return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\nJenis Puasa: %s\nMulai: %s\nSelesai: %s\n\n%s", user.ID, name, user.Phone, fastingTypeName, formatScheduleDisplay(schedule.FastStart), formatScheduleDisplay(schedule.FastEnd), status), nil
 }
 
 func (u *fastingUsecase) CancelToday(phone string) (string, error) {
@@ -184,6 +190,29 @@ func (u *fastingUsecase) CancelToday(phone string) (string, error) {
 	}
 
 	return "✅ Fasting dibuka. Tidak akan ada notifikasi hari ini. Selamat berbuka! 🎉", nil
+}
+
+func (u *fastingUsecase) DeleteSchedule(phone string) (string, error) {
+	user, err := u.userRepo.FindByPhone(phone)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+		}
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
+	}
+
+	if _, err := u.scheduleRepo.FindActiveByUserID(user.ID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("gagal memeriksa jadwal: %w", err)
+		}
+		return "ℹ️ Belum ada jadwal fasting yang aktif untuk dihapus.", nil
+	}
+
+	if err := u.scheduleRepo.DeactivateByUserID(user.ID); err != nil {
+		return "", fmt.Errorf("gagal menghapus jadwal: %w", err)
+	}
+
+	return "✅ Jadwal fasting berhasil dihapus. Jika cek /status, jadwal tidak akan tampil lagi.", nil
 }
 
 func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error) {
@@ -236,9 +265,10 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 	u.scheduleRepo.DeactivateByUserID(user.ID)
 
 	schedule := &domain.FastingSchedule{
-		UserID:    user.ID,
-		FastStart: formatStoredTime(startDateTime),
-		FastEnd:   formatStoredTime(endDateTime),
+		UserID:          user.ID,
+		FastStart:       formatStoredTime(startDateTime),
+		FastEnd:         formatStoredTime(endDateTime),
+		FastingTypeName: fastingTypeName,
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
 		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
@@ -278,9 +308,10 @@ func (u *fastingUsecase) ScheduleFreestyleFasting(phone, kind, dateInput, startT
 	u.scheduleRepo.DeactivateByUserID(user.ID)
 
 	schedule := &domain.FastingSchedule{
-		UserID:    user.ID,
-		FastStart: formatStoredTime(startDateTime),
-		FastEnd:   formatStoredTime(endDateTime),
+		UserID:          user.ID,
+		FastStart:       formatStoredTime(startDateTime),
+		FastEnd:         formatStoredTime(endDateTime),
+		FastingTypeName: fastingTypeName,
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
 		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)

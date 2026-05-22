@@ -46,6 +46,11 @@ ALUR PALING SEDERHANA
 7. Batalkan atau buka puasa hari ini:
    /buka
 
+8. Hapus jadwal puasa aktif jika ingin mengosongkan status:
+   /hapus
+
+   Setelah /hapus, saat cek /status jadwal puasa tidak akan tampil lagi.
+
 
 DAFTAR JENIS PUASA SAAT INI
 ---------------------------
@@ -141,10 +146,13 @@ Pilih jenis puasa dari daftar.
 Jadwalkan Water Fasting atau Dry Fasting freestyle dengan tanggal dan durasi sendiri.
 
 /status
-Cek status akun dan jadwal puasa.
+Cek status akun dan jadwal puasa. Status menampilkan jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai.
 
 /buka
 Batalkan atau buka puasa hari ini.
+
+/hapus
+Hapus jadwal puasa aktif. Setelah dihapus, /status akan menampilkan belum ada jadwal fasting.
 
 /help
 Tampilkan bantuan dari bot.
@@ -165,4 +173,5 @@ CATATAN FORMAT
 - Untuk /jadwalkan, jenis puasa hanya WF atau DF.
 - Untuk /jadwalkan, tanggal dan jam mulai harus setelah waktu sekarang.
 - Untuk /set-puasa, jika jam mulai hari ini sudah lewat, bot otomatis menjadwalkan mulai besok di jam tersebut.
-- Balasan bot akan menampilkan tanggal dan jam mulai serta tanggal dan jam selesai agar mudah dipahami.
+- Balasan bot dan /status akan menampilkan jenis puasa, tanggal dan jam mulai, serta tanggal dan jam selesai agar mudah dipahami.
+- Gunakan /hapus jika ingin menghapus jadwal aktif supaya /status tidak lagi menampilkan jadwal puasa.

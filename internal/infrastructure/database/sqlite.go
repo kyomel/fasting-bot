@@ -51,6 +51,7 @@ func migrate(conn *sql.DB) error {
 			user_id INTEGER NOT NULL,
 			fast_start TEXT NOT NULL,
 			fast_end TEXT NOT NULL,
+			fasting_type_name TEXT DEFAULT '',
 			is_active BOOLEAN DEFAULT 1,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id)
@@ -79,5 +80,37 @@ func migrate(conn *sql.DB) error {
 		}
 	}
 
+	if err := addColumnIfMissing(conn, "fasting_schedules", "fasting_type_name", "TEXT DEFAULT ''"); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func addColumnIfMissing(conn *sql.DB, table, column, definition string) error {
+	rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, dataType string
+		var notNull int
+		var defaultValue interface{}
+		var primaryKey int
+		if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &primaryKey); err != nil {
+			return err
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition))
+	return err
 }

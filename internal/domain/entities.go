@@ -11,12 +11,13 @@ type User struct {
 }
 
 type FastingSchedule struct {
-	ID        int64
-	UserID    int64
-	FastStart string
-	FastEnd   string
-	IsActive  bool
-	CreatedAt time.Time
+	ID              int64
+	UserID          int64
+	FastStart       string
+	FastEnd         string
+	FastingTypeName string
+	IsActive        bool
+	CreatedAt       time.Time
 }
 
 type NotificationLog struct {

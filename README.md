@@ -7,7 +7,7 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 - ⏰ Notifikasi otomatis saat fasting mulai dan berakhir
 - 📱 Bisa digunakan di grup maupun DM personal
 - 🗄️ Database SQLite (ringan, tanpa server)
-- 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /status, /buka
+- 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /status, /buka, /hapus
 
 ## Struktur Project (Clean Architecture)
 
@@ -117,6 +117,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 /list-puasa
 /set-puasa 3 05:00
 /status
+/hapus
 ```
 
 **Test di grup "Fasting Group":**
@@ -127,6 +128,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 /list-puasa
 /set-puasa 3 05:00
 /status
+/hapus
 ```
 
 **Test /list-puasa dan /set-puasa:**
@@ -134,6 +136,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 /list-puasa
 /set-puasa 3 05:00
 /status
+/hapus
 ```
 
 **Test notifikasi otomatis:**
@@ -149,8 +152,9 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
 | `/jadwalkan <WF\|DF> <tanggal> <jam> <durasi>` | Jadwalkan Water/Dry Fasting freestyle | `/jadwalkan WF 23-05-2026 16:00 12` |
-| `/status` | Cek status fasting, nama, nomor, dan ID user yang terdaftar | `/status` |
+| `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai | `/status` |
 | `/buka` | Buka puasa / batalkan fasting | `/buka` |
+| `/hapus` | Hapus jadwal puasa aktif. Setelah dihapus, `/status` akan menampilkan belum ada jadwal fasting | `/hapus` |
 | `/help` | Tampilkan bantuan | `/help` |
 | `/info` | Info bot | `/info` |
 
@@ -159,7 +163,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 Bot mendukung 10 jenis puasa yang bisa dipilih:
 
 | No | Jenis | Durasi Puasa | Cara Set |
-|---|---|---|---|---|
+|---|---|---|---|
 | 1 | IF 12:12 | 12 jam | `/set-puasa 1 05:00` |
 | 2 | IF 14:10 | 14 jam | `/set-puasa 2 05:00` |
 | 3 | IF 16:8 | 16 jam | `/set-puasa 3 05:00` |
@@ -183,11 +187,15 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 4. Jadwalkan WF/DF freestyle dengan tanggal: `/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`
    - Contoh: `/jadwalkan WF 23-05-2026 16:00 12` → Water Fasting 12 jam dari 23-05-2026 16:00 sampai 24-05-2026 04:00
    - Contoh: `/jadwalkan DF 23-05-2026 20:00 10` → Dry Fasting 10 jam dari 23-05-2026 20:00 sampai 24-05-2026 06:00
+5. Cek status jadwal: `/status`
+   - Status menampilkan jenis puasa, tanggal/jam mulai, dan tanggal/jam selesai.
+6. Hapus jadwal aktif jika ingin mengosongkan status: `/hapus`
+   - Setelah `/hapus`, `/status` akan kembali menampilkan belum ada jadwal fasting.
 
 Catatan waktu:
 - Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
-- Balasan bot menampilkan tanggal dan jam mulai/selesai agar jadwal lebih mudah dipahami.
+- Balasan bot dan `/status` menampilkan jenis puasa, tanggal dan jam mulai, serta tanggal dan jam selesai agar jadwal lebih mudah dipahami.
 
 ## Menambah Fitur Baru
 
