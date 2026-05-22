@@ -7,7 +7,7 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 - ⏰ Notifikasi otomatis saat fasting mulai dan berakhir
 - 📱 Bisa digunakan di grup maupun DM personal
 - 🗄️ Database SQLite (ringan, tanpa server)
-- 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /status, /buka, /hapus
+- 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /jadwalkan, /jadwal-bebas, /status, /buka, /hapus
 
 ## Struktur Project (Clean Architecture)
 
@@ -107,11 +107,13 @@ Saat pertama kali running, bot akan menampilkan **QR code di terminal**:
 3. Arahkan kamera HP ke QR code di terminal
 4. Tunggu hingga muncul "✅ Login successful!"
 
-Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap kali run.
+Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kali run. Untuk production, arahkan `DATABASE_PATH` dan `SESSION_PATH` ke folder data yang permission-nya ketat, misalnya `/opt/fasting-bot/data`.
+
+> Security: isi `ALLOWED_GROUP_JID` supaya command grup hanya diproses dari grup yang dipercaya. Command personal seperti `/daftar`, `/set-puasa`, `/status`, `/stats`, `/buka`, dan `/hapus` akan dibalas via DM agar nomor dan jadwal tidak terbuka di grup.
 
 ### 4. Testing
 
-**Test di DM (nomor pribadi kamu):**
+**Test di DM admin (`ADMIN_NUMBER`):**
 ```
 /daftar kyomel
 /list-puasa
@@ -120,7 +122,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 /hapus
 ```
 
-**Test di grup "Fasting Group":**
+**Test di grup yang JID-nya sesuai `ALLOWED_GROUP_JID`:**
 1. Invite bot ke grup (dari HP pribadi)
 2. Kirim command di grup:
 ```
@@ -151,7 +153,8 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 | `/setname <nama>` | Ubah nama user yang sudah terdaftar | `/setname kyomel baru` |
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
-| `/jadwalkan <WF\|DF> <tanggal> <jam> <durasi>` | Jadwalkan Water/Dry Fasting freestyle | `/jadwalkan WF 23-05-2026 16:00 12` |
+| `/jadwalkan <nomor> <tanggal> <jam> [durasi]` | Jadwalkan puasa dari daftar dengan tanggal khusus. Boleh memakai waktu lampau untuk restore progres yang ter-reset | `/jadwalkan 3 23-05-2026 16:00` |
+| `/jadwal-bebas <WF\|DF> <tanggal> <jam> <durasi>` | Jadwalkan Water/Dry Fasting freestyle | `/jadwal-bebas WF 23-05-2026 16:00 12` |
 | `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan | `/status` |
 | `/buka` | Buka puasa / batalkan fasting. Jika puasa sudah mulai, durasi dicatat ke stats | `/buka` |
 | `/hapus` | Hapus jadwal puasa aktif. Setelah dihapus, `/status` akan menampilkan belum ada jadwal fasting | `/hapus` |
@@ -187,21 +190,27 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
    - Contoh: `/set-puasa 8 05:00 48` → Water Fasting 48 jam dari jam 05:00
    - Contoh: `/set-puasa 9 05:00 18` → Dry Fasting 18 jam dari jam 05:00
    - Contoh: `/set-puasa 10 05:00 96` → Prolonged Fasting metode water fasting 96 jam dari jam 05:00
-4. Jadwalkan WF/DF freestyle dengan tanggal: `/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`
-   - Contoh: `/jadwalkan WF 23-05-2026 16:00 12` → Water Fasting 12 jam dari 23-05-2026 16:00 sampai 24-05-2026 04:00
-   - Contoh: `/jadwalkan DF 23-05-2026 20:00 10` → Dry Fasting 10 jam dari 23-05-2026 20:00 sampai 24-05-2026 06:00
-5. Cek status jadwal: `/status`
+4. Jadwalkan puasa dari daftar dengan tanggal khusus: `/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]`
+   - Contoh: `/jadwalkan 3 23-05-2026 16:00` → IF 16:8 dari 23-05-2026 16:00 sampai 24-05-2026 08:00
+   - Contoh: `/jadwalkan 8 23-05-2026 16:00 48` → Water Fasting 48 jam dari 23-05-2026 16:00 sampai 25-05-2026 16:00
+   - `/jadwalkan` boleh memakai tanggal/jam yang sudah lewat untuk memulihkan progres setelah data aktif ter-reset. Jika mulai sudah lewat, notifikasi mulai tidak dikirim ulang.
+5. Jadwalkan WF/DF freestyle dengan tanggal dan durasi bebas: `/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`
+   - Contoh: `/jadwal-bebas WF 23-05-2026 16:00 12` → Water Fasting 12 jam dari 23-05-2026 16:00 sampai 24-05-2026 04:00
+   - Contoh: `/jadwal-bebas DF 23-05-2026 20:00 10` → Dry Fasting 10 jam dari 23-05-2026 20:00 sampai 24-05-2026 06:00
+6. Cek status jadwal: `/status`
    - Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan jika sedang berjalan akan menampilkan sudah berjalan berapa lama.
-6. Buka puasa: `/buka`
+7. Buka puasa: `/buka`
    - Jika puasa sudah mulai, bot mencatat total waktu puasa ke `/stats` dalam format hari, jam, dan menit.
    - Jika `/buka` dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
-7. Cek statistik dan klasemen: `/stats` atau `/leaderboard`
+8. Cek statistik dan klasemen: `/stats` atau `/leaderboard`
    - `/leaderboard` diurutkan berdasarkan total waktu puasa terbesar.
-8. Hapus jadwal aktif jika ingin mengosongkan status: `/hapus`
+9. Hapus jadwal aktif jika ingin mengosongkan status: `/hapus`
    - Setelah `/hapus`, `/status` akan kembali menampilkan belum ada jadwal fasting.
 
 Catatan waktu:
 - Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
+- Format tanggal untuk `/jadwal-bebas` adalah `DD-MM-YYYY`.
+- `/jadwalkan` dan `/jadwal-bebas` boleh memakai tanggal/jam mulai yang sudah lewat untuk restore progres. Setelah itu gunakan `/buka` saat benar-benar berbuka supaya durasi masuk ke `/stats`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
 - Streak puasa dihitung dari tanggal kalender lokal saat puasa berjalan. Jika ada satu hari kalender tanpa puasa berjalan, streak saat ini otomatis kembali ke 0 saat `/stats` atau `/leaderboard` dibuka.
 - `/stats` hanya menghitung hasil puasa dari `/buka` setelah puasa dimulai.
@@ -231,7 +240,7 @@ Contoh: Menambah fitur riwayat fasting
 ### Bot tidak bisa connect
 - Pastikan nomor bot sudah terdaftar di WhatsApp
 - Cek koneksi internet
-- Hapus `whatsapp-session.db` dan scan QR ulang
+- Hapus file di `SESSION_PATH` dan scan QR ulang
 
 ### QR code tidak muncul / tidak bisa di-scan
 - Pastikan terminal support Unicode (gunakan Terminal bawaan Mac/Linux, iTerm2, atau Windows Terminal)
@@ -240,17 +249,17 @@ Contoh: Menambah fitur riwayat fasting
 - Pastikan kamera HP bersih dan cukup terang saat scan
 
 ### Database error
-- Hapus `fasting-bot.db` untuk reset database (hati-hati, data hilang!)
+- Hapus file di `DATABASE_PATH` untuk reset database (hati-hati, data hilang!)
 - Pastikan folder writable
 
 ## Reset Data
 
 ```bash
 # Hapus database (semua data user & jadwal terhapus!)
-rm fasting-bot.db
+rm /opt/fasting-bot/data/fasting-bot.db
 
 # Hapus session (perlu scan QR ulang)
-rm whatsapp-session.db
+rm /opt/fasting-bot/data/whatsapp-session.db
 ```
 
 ## Catatan Penting

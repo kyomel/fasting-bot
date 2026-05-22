@@ -68,7 +68,7 @@ func (s *Scheduler) checkAndNotify() {
 			fmt.Printf("❌ Failed to log start notification: %v\n", err)
 			continue
 		}
-		fmt.Printf("📨 Sent start notification to %s\n", t.JID)
+		fmt.Println("📨 Sent start notification")
 	}
 
 	targets, err = s.scheduleRepo.FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime)
@@ -87,7 +87,7 @@ func (s *Scheduler) checkAndNotify() {
 			fmt.Printf("❌ Failed to log end notification: %v\n", err)
 			continue
 		}
-		fmt.Printf("📨 Sent end notification to %s\n", t.JID)
+		fmt.Println("📨 Sent end notification")
 	}
 }
 

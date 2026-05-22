@@ -47,6 +47,7 @@ func GetFastingTypesList() string {
 	result += "*Cara pakai singkat:*\n"
 	result += "• IF/OMAD: `/set-puasa <nomor> <jam_mulai>` contoh `/set-puasa 3 05:00`\n"
 	result += "• Water/Dry/Prolonged: `/set-puasa <nomor> <jam_mulai> <durasi_jam>` contoh `/set-puasa 8 05:00 48`\n"
-	result += "• Jadwal tanggal khusus WF/DF: `/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwalkan WF 23-05-2026 16:00 12`"
+	result += "• Jadwal tanggal khusus: `/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]` contoh `/jadwalkan 3 23-05-2026 16:00`\n"
+	result += "• Jadwal freestyle WF/DF: `/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwal-bebas WF 23-05-2026 16:00 12`"
 	return result
 }

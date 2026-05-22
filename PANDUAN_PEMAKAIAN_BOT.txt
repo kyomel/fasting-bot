@@ -34,33 +34,44 @@ ALUR PALING SEDERHANA
    Contoh Prolonged Fasting metode water fasting 96 jam:
    /set-puasa 10 05:00 96
 
-5. Jika ingin menjadwalkan puasa freestyle dengan tanggal khusus:
-   /jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
+5. Jika ingin menjadwalkan puasa dari daftar dengan tanggal khusus:
+   /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
+
+   Contoh IF 16:8 pada tanggal tertentu:
+   /jadwalkan 3 23-05-2026 16:00
+
+   Contoh Water Fasting 48 jam pada tanggal tertentu:
+   /jadwalkan 8 23-05-2026 16:00 48
+
+   /jadwalkan juga boleh memakai tanggal/jam yang sudah lewat untuk restore progres setelah data aktif ter-reset.
+
+6. Jika ingin menjadwalkan puasa freestyle WF/DF dengan tanggal khusus:
+   /jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
 
    Contoh Water Fasting freestyle 12 jam:
-   /jadwalkan WF 23-05-2026 16:00 12
+   /jadwal-bebas WF 23-05-2026 16:00 12
 
    Contoh Dry Fasting freestyle 10 jam:
-   /jadwalkan DF 23-05-2026 20:00 10
+   /jadwal-bebas DF 23-05-2026 20:00 10
 
-6. Cek status:
+7. Cek status:
    /status
 
-7. Batalkan atau buka puasa hari ini:
+8. Batalkan atau buka puasa hari ini:
    /buka
 
    Jika puasa sudah mulai, bot mencatat total waktu puasa ke /stats.
    Jika /buka dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
 
-8. Hapus jadwal puasa aktif jika ingin mengosongkan status:
+9. Hapus jadwal puasa aktif jika ingin mengosongkan status:
    /hapus
 
    Setelah /hapus, saat cek /status jadwal puasa tidak akan tampil lagi.
 
-9. Lihat statistik puasa pribadi:
+10. Lihat statistik puasa pribadi:
    /stats
 
-10. Lihat klasemen puasa berdasarkan total waktu puasa:
+11. Lihat klasemen puasa berdasarkan total waktu puasa:
     /leaderboard
 
 
@@ -107,12 +118,45 @@ DAFTAR JENIS PUASA SAAT INI
     Cara set: /set-puasa 10 05:00 96
 
 
-PUASA FREESTYLE DENGAN /jadwalkan
----------------------------------
-Gunakan /jadwalkan jika anggota grup ingin membuat jadwal puasa bebas dengan jenis WF atau DF, tanggal mulai, jam mulai, dan durasi sendiri.
+JADWAL TANGGAL KHUSUS DENGAN /jadwalkan
+---------------------------------------
+Gunakan /jadwalkan jika anggota grup ingin membuat jadwal puasa dari daftar /list-puasa dengan tanggal mulai tertentu. Formatnya mirip /set-puasa, tetapi ditambah tanggal. Command ini boleh memakai waktu lampau untuk memulihkan progres setelah data aktif ter-reset.
 
 Format:
-/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
+/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
+
+Keterangan:
+- Nomor mengikuti daftar /list-puasa
+- Tanggal memakai format DD-MM-YYYY
+- Jam memakai format HH:MM
+- Nomor 1-7 tidak perlu durasi
+- Nomor 8-10 wajib memakai durasi jam
+
+Contoh:
+/jadwalkan 3 23-05-2026 16:00
+
+Artinya:
+- Jenis: IF 16:8
+- Mulai: 23-05-2026 16:00
+- Selesai: 24-05-2026 08:00
+- Durasi: 16 jam
+
+Contoh lain:
+/jadwalkan 8 23-05-2026 16:00 48
+
+Artinya:
+- Jenis: Water Fasting 48 jam
+- Mulai: 23-05-2026 16:00
+- Selesai: 25-05-2026 16:00
+- Durasi: 48 jam
+
+
+PUASA FREESTYLE DENGAN /jadwal-bebas
+------------------------------------
+Gunakan /jadwal-bebas jika anggota grup ingin membuat jadwal puasa bebas dengan jenis WF atau DF, tanggal mulai, jam mulai, dan durasi sendiri.
+
+Format:
+/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
 
 Keterangan:
 - WF = Water Fasting
@@ -122,7 +166,7 @@ Keterangan:
 - Durasi memakai angka jam
 
 Contoh:
-/jadwalkan WF 23-05-2026 16:00 12
+/jadwal-bebas WF 23-05-2026 16:00 12
 
 Artinya:
 - Jenis: Water Fasting
@@ -131,7 +175,7 @@ Artinya:
 - Durasi: 12 jam
 
 Contoh lain:
-/jadwalkan DF 23-05-2026 20:00 10
+/jadwal-bebas DF 23-05-2026 20:00 10
 
 Artinya:
 - Jenis: Dry Fasting
@@ -154,7 +198,10 @@ Lihat daftar jenis puasa dan contoh cara memilihnya.
 /set-puasa <nomor> <jam_mulai> [durasi_jam]
 Pilih jenis puasa dari daftar.
 
-/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
+/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
+Jadwalkan puasa dari daftar dengan tanggal khusus. Boleh memakai waktu lampau untuk restore progres.
+
+/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
 Jadwalkan Water Fasting atau Dry Fasting freestyle dengan tanggal dan durasi sendiri.
 
 /status
@@ -187,9 +234,10 @@ CATATAN FORMAT
 - Nomor 8 harus memakai durasi 24, 36, 48, atau 72 jam.
 - Nomor 9 minimal 1 jam.
 - Nomor 10 adalah Prolonged Fasting metode water fasting, minimal 24 jam.
-- Untuk /jadwalkan, format tanggal adalah DD-MM-YYYY, contoh: 23-05-2026.
-- Untuk /jadwalkan, jenis puasa hanya WF atau DF.
-- Untuk /jadwalkan, tanggal dan jam mulai harus setelah waktu sekarang.
+- Untuk /jadwalkan dan /jadwal-bebas, format tanggal adalah DD-MM-YYYY, contoh: 23-05-2026.
+- Untuk /jadwalkan, nomor puasa mengikuti daftar 1-10 seperti /set-puasa.
+- Untuk /jadwal-bebas, jenis puasa hanya WF atau DF.
+- Untuk /jadwalkan dan /jadwal-bebas, tanggal dan jam mulai boleh sebelum waktu sekarang untuk restore progres. Jika waktu mulai sudah lewat, bot tidak mengirim ulang notifikasi mulai.
 - Untuk /set-puasa, jam mulai wajib waktu sekarang atau waktu ke depan. Jika jam mulai hari ini sudah lewat dari waktu sekarang, bot otomatis menjadwalkan mulai besok di jam tersebut.
 - Jika jam mulai /set-puasa sama dengan menit sekarang, bot menganggap jadwal mulai sekarang.
 - Saat waktu selesai puasa tiba, bot akan mengirim notifikasi bahwa puasa sudah selesai dan sudah waktunya berbuka.

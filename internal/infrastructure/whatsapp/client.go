@@ -8,9 +8,9 @@ import (
 
 	"fasting-bot/internal/config"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/mdp/qrterminal/v3"
 	"github.com/skip2/go-qrcode"
-	_ "github.com/mattn/go-sqlite3"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -23,9 +23,14 @@ type Client struct {
 }
 
 func NewClient() (*Client, error) {
-	logger := waLog.Stdout("Client", "INFO", true)
+	logger := waLog.Stdout("Client", "WARN", true)
 
-	container, err := sqlstore.New(context.Background(), "sqlite3", "file:"+config.SessionPath+"?_foreign_keys=on", logger)
+	sessionPath, err := config.SecureFilePath(config.SessionPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid session path: %w", err)
+	}
+
+	container, err := sqlstore.New(context.Background(), "sqlite3", "file:"+sessionPath+"?_foreign_keys=on", logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sqlstore: %w", err)
 	}
@@ -53,9 +58,12 @@ func NewClient() (*Client, error) {
 }
 
 func pairWithQRCode(client *whatsmeow.Client) error {
+	if !isInteractiveStdout() && config.QRCodePath == "" {
+		return fmt.Errorf("no WhatsApp session found; pairing must be done interactively or with QR_CODE_PATH")
+	}
+
 	fmt.Println()
 	fmt.Println("📱 No session found — QR Code pairing")
-	fmt.Println("   Bot: " + config.BotNumber)
 	fmt.Println()
 
 	qrChan, err := client.GetQRChannel(context.Background())
@@ -75,6 +83,8 @@ func pairWithQRCode(client *whatsmeow.Client) error {
 }
 
 func waitForQRScan(qrChan <-chan whatsmeow.QRChannelItem) error {
+	defer removeQRCodeFile()
+
 	deadline := time.After(qrTimeout)
 	var qrCount int
 
@@ -103,19 +113,31 @@ func waitForQRScan(qrChan <-chan whatsmeow.QRChannelItem) error {
 func handleQREvent(evt whatsmeow.QRChannelItem, qrCount *int) {
 	switch evt.Event {
 	case "code":
-		*qrCount++
+		(*qrCount)++
 		fmt.Printf("📲 QR Code #%d — scan sekarang:\n", *qrCount)
 		fmt.Println()
 
-		qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
-		fmt.Println()
+		if isInteractiveStdout() {
+			qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
+			fmt.Println()
+		}
 
 		if config.QRCodePath != "" {
-			qrcode.WriteFile(evt.Code, qrcode.Medium, 512, config.QRCodePath)
-			fmt.Println("💾 Saved: " + config.QRCodePath)
-			if config.QRCodeHost != "" {
-				fmt.Printf("   scp %s:%s ./qr-code.png\n", config.QRCodeHost, config.QRCodePath)
+			qrCodePath, err := config.SecureFilePath(config.QRCodePath)
+			if err != nil {
+				fmt.Printf("⚠️  Failed to prepare QR code file: %v\n", err)
+				return
 			}
+			if err := qrcode.WriteFile(evt.Code, qrcode.Medium, 512, qrCodePath); err != nil {
+				fmt.Printf("⚠️  Failed to save QR code: %v\n", err)
+				return
+			}
+			fmt.Println("💾 Saved: " + qrCodePath)
+			if config.QRCodeHost != "" {
+				fmt.Printf("   scp %s:%s ./qr-code.png\n", config.QRCodeHost, qrCodePath)
+			}
+		} else if !isInteractiveStdout() {
+			fmt.Println("⚠️  QR code not printed because stdout is not interactive.")
 		}
 		fmt.Println("⏱️  QR ini expired ~60 detik, tapi akan regenerate otomatis.")
 		fmt.Println()
@@ -130,4 +152,20 @@ func handleQREvent(evt whatsmeow.QRChannelItem, qrCount *int) {
 
 func (c *Client) Disconnect() {
 	c.WA.Disconnect()
+}
+
+func isInteractiveStdout() bool {
+	info, err := os.Stdout.Stat()
+	return err == nil && (info.Mode()&os.ModeCharDevice) != 0
+}
+
+func removeQRCodeFile() {
+	if config.QRCodePath == "" {
+		return
+	}
+	qrCodePath, err := config.SecureFilePath(config.QRCodePath)
+	if err != nil {
+		return
+	}
+	_ = os.Remove(qrCodePath)
 }

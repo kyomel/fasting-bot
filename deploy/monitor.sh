@@ -19,7 +19,7 @@ case "${1:-}" in
     find "$BACKUP_DIR" -name "*.bak-*" -mtime +7 -delete 2>/dev/null || true
     sudo systemctl stop fasting-bot; sleep 1
     for db in fasting-bot.db whatsapp-session.db; do
-      [ -f "/opt/fasting-bot/$db" ] && cp "/opt/fasting-bot/$db" "$BACKUP_DIR/$db.bak-$(date +%Y%m%d-%H%M%S)"
+      [ -f "/opt/fasting-bot/data/$db" ] && cp "/opt/fasting-bot/data/$db" "$BACKUP_DIR/$db.bak-$(date +%Y%m%d-%H%M%S)"
     done
     sudo systemctl start fasting-bot
     echo "[$(date '+%F %T')] Backup done" >> "$LOG"

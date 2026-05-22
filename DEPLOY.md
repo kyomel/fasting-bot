@@ -85,12 +85,15 @@ Buat `.env` file di VPS (manual setup pertama kali):
 ```bash
 # SSH ke VPS
 cat > /opt/fasting-bot/.env << 'EOF'
-APP_NAME=fasting-bot
-APP_ENV=production
-HTTP_ADDR=:3000
-SQLITE_DSN=file:data/fasting.db?_busy_timeout=5000&_journal_mode=WAL&_foreign_keys=on
-BOT_TICK_INTERVAL=1m
-SHUTDOWN_TIMEOUT=10s
+BOT_NUMBER=628xxxxxxxxxx
+ADMIN_NUMBER=628xxxxxxxxxx
+ALLOWED_GROUP_JID=120xxxxxxxxxx@g.us
+GROUP_NAME=Fasting Group
+DATABASE_PATH=/opt/fasting-bot/data/fasting-bot.db
+SESSION_PATH=/opt/fasting-bot/data/whatsapp-session.db
+QR_CODE_PATH=
+QR_CODE_HOST=
+APP_TIMEZONE=Asia/Jakarta
 EOF
 
 chown fastingbot:fastingbot /opt/fasting-bot/.env
@@ -171,9 +174,9 @@ crontab -l
 sudo systemctl status fasting-bot
 sudo journalctl -u fasting-bot -n 50
 
-# Pastikan .env file ada dan benar
+# Pastikan .env file ada dan permission aman
 ls -la /opt/fasting-bot/.env
-cat /opt/fasting-bot/.env
+stat /opt/fasting-bot/.env
 
 # Pastikan binary executable
 ls -la /opt/fasting-bot/fasting-bot

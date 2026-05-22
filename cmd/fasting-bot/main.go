@@ -21,8 +21,6 @@ func main() {
 	config.Load()
 
 	fmt.Println("🤖 Fasting Bot Starting...")
-	fmt.Printf("Bot Number: %s\n", config.BotNumber)
-	fmt.Printf("Admin Number: %s\n", config.AdminNumber)
 	fmt.Printf("Group Name: %s\n", config.GroupName)
 	fmt.Printf("Timezone: %s\n", config.AppTimezone)
 

@@ -24,7 +24,7 @@ func (n *Notifier) Send(jidStr, message string) error {
 
 	jid, err := types.ParseJID(jidStr)
 	if err != nil {
-		return fmt.Errorf("invalid JID %s: %w", jidStr, err)
+		return fmt.Errorf("invalid JID: %w", err)
 	}
 
 	_, err = n.client.SendMessage(context.Background(), jid, &waProto.Message{

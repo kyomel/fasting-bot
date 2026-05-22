@@ -20,9 +20,17 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=fasting-bot
 
+UMask=0077
 NoNewPrivileges=true
 ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/fasting-bot/data
 PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+RestrictSUIDSGID=true
+LockPersonality=true
 
 [Install]
 WantedBy=multi-user.target

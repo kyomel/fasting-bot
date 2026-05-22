@@ -61,9 +61,13 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 	}
 
 	phone := "+" + sender.User
+	if !isAuthorized(phone, chat.String(), isGroup) {
+		return
+	}
+
 	response, err := h.processCommand(phone, sender.String(), text)
 	if err != nil {
-		log.Printf("[ERROR] processCommand(%s): %v", phone, err)
+		log.Printf("[ERROR] processCommand failed: %v", err)
 	}
 
 	if response == "" {
@@ -71,7 +75,7 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 	}
 
 	replyTo := chat
-	if !isGroup {
+	if !isGroup || isPrivateCommand(commandName(text)) {
 		replyTo = sender
 	}
 
@@ -79,7 +83,42 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 		Conversation: proto.String(response),
 	})
 	if sendErr != nil {
-		log.Printf("[ERROR] SendMessage to %s: %v", replyTo.String(), sendErr)
+		log.Printf("[ERROR] SendMessage failed: %v", sendErr)
+	}
+}
+
+func isAuthorized(phone, chatJID string, isGroup bool) bool {
+	if isGroup {
+		return config.AllowedGroupJID != "" && chatJID == config.AllowedGroupJID
+	}
+	return phone == normalizePhone(config.AdminNumber)
+}
+
+func normalizePhone(phone string) string {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return ""
+	}
+	if strings.HasPrefix(phone, "+") {
+		return phone
+	}
+	return "+" + phone
+}
+
+func commandName(text string) string {
+	parts := strings.Fields(strings.TrimSpace(text))
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.ToLower(parts[0])
+}
+
+func isPrivateCommand(command string) bool {
+	switch command {
+	case "/daftar", "/register", "/setname", "/set-puasa", "/jadwalkan", "/jadwal-bebas", "/status", "/buka", "/cancel", "/hapus", "/stats":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -115,6 +154,9 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 
 	case "/jadwalkan":
 		return h.handleJadwalkan(phone, args)
+
+	case "/jadwal-bebas":
+		return h.handleJadwalBebas(phone, args)
 
 	case "/status":
 		return h.callUsecase(phone, "GetStatus", func() (string, error) {
@@ -155,7 +197,7 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 func (h *CommandHandler) callUsecase(phone, label string, fn func() (string, error)) (string, error) {
 	resp, err := fn()
 	if err != nil {
-		log.Printf("[ERROR] %s(%s): %v", label, phone, err)
+		log.Printf("[ERROR] %s failed: %v", label, err)
 		return "❌ Terjadi kesalahan saat " + errorLabel(label) + ". Coba lagi nanti.", nil
 	}
 	return resp, nil
@@ -163,12 +205,12 @@ func (h *CommandHandler) callUsecase(phone, label string, fn func() (string, err
 
 var errorLabels = map[string]string{
 	"RegisterUser":   "mendaftar",
-	"SetName":         "mengubah nama",
-	"GetStatus":       "mengambil status",
-	"CancelToday":     "membatalkan",
-	"DeleteSchedule":  "menghapus jadwal",
-	"GetStats":        "mengambil stats",
-	"GetLeaderboard":  "mengambil leaderboard",
+	"SetName":        "mengubah nama",
+	"GetStatus":      "mengambil status",
+	"CancelToday":    "membatalkan",
+	"DeleteSchedule": "menghapus jadwal",
+	"GetStats":       "mengambil stats",
+	"GetLeaderboard": "mengambil leaderboard",
 }
 
 func errorLabel(method string) string {
@@ -180,7 +222,7 @@ func errorLabel(method string) string {
 
 func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, error) {
 	if len(args) < 2 {
-		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry/Prolonged (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48\n\nJadwal tanggal khusus WF/DF: /jadwalkan WF 23-05-2026 16:00 12", nil
+		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry/Prolonged (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48\n\nJadwal tanggal khusus: /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]\nContoh: /jadwalkan 3 23-05-2026 16:00", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])
@@ -200,26 +242,59 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, er
 
 	resp, err := h.usecase.SetFastingType(phone, typeID, startTime, durationHours)
 	if err != nil {
-		log.Printf("[ERROR] SetFastingType(%s, %d): %v", phone, typeID, err)
+		log.Printf("[ERROR] SetFastingType failed: %v", err)
 		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
 	}
 	return resp, nil
 }
 
 func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, error) {
+	if len(args) < 3 {
+		return "❌ Format salah.\nGunakan: /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]\nContoh: /jadwalkan 3 23-05-2026 16:00\nContoh WF: /jadwalkan 8 23-05-2026 16:00 48", nil
+	}
+
+	if strings.EqualFold(args[0], "WF") || strings.EqualFold(args[0], "DF") {
+		return "❌ Format freestyle WF/DF pindah ke /jadwal-bebas.\nGunakan: /jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
+	}
+
+	typeID, err := strconv.Atoi(args[0])
+	if err != nil || typeID < 1 || typeID > 10 {
+		return "❌ Nomor puasa tidak valid. Pilih 1-10. Kirim /list-puasa untuk melihat daftar.", nil
+	}
+
+	durationHours := 0
+	if typeID >= 8 {
+		if len(args) < 4 {
+			return "❌ Durasi jam wajib untuk Water/Dry/Prolonged Fasting.\nContoh: /jadwalkan 8 23-05-2026 16:00 48", nil
+		}
+		durationHours, err = strconv.Atoi(args[3])
+		if err != nil {
+			return "❌ Durasi jam harus angka.\nContoh: /jadwalkan 8 23-05-2026 16:00 48", nil
+		}
+	}
+
+	resp, err := h.usecase.ScheduleFastingType(phone, typeID, args[1], args[2], durationHours)
+	if err != nil {
+		log.Printf("[ERROR] ScheduleFastingType failed: %v", err)
+		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
+	}
+	return resp, nil
+}
+
+func (h *CommandHandler) handleJadwalBebas(phone string, args []string) (string, error) {
 	if len(args) != 4 {
-		return "❌ Format salah.\nGunakan: /jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>\nContoh: /jadwalkan WF 23-05-2026 16:00 12", nil
+		return "❌ Format salah.\nGunakan: /jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
 	}
 
 	kind := strings.ToUpper(args[0])
 	durationHours, err := strconv.Atoi(args[3])
 	if err != nil {
-		return "❌ Durasi jam harus angka.\nContoh: /jadwalkan WF 23-05-2026 16:00 12", nil
+		return "❌ Durasi jam harus angka.\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
 	}
 
 	resp, err := h.usecase.ScheduleFreestyleFasting(phone, kind, args[1], args[2], durationHours)
 	if err != nil {
-		log.Printf("[ERROR] ScheduleFreestyleFasting(%s, %s): %v", phone, kind, err)
+		log.Printf("[ERROR] ScheduleFreestyleFasting failed: %v", err)
 		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
 	}
 	return resp, nil
@@ -232,7 +307,8 @@ func getHelpText() string {
 /setname <nama> - Ubah nama user
 /list-puasa - Lihat jenis-jenis puasa
 /set-puasa <nomor> <jam> [durasi] - Pilih jenis puasa
-/jadwalkan <WF|DF> <tanggal> <jam> <durasi> - Jadwalkan puasa freestyle
+/jadwalkan <nomor> <tanggal> <jam> [durasi] - Jadwalkan puasa dari daftar, bisa tanggal lampau
+/jadwal-bebas <WF|DF> <tanggal> <jam> <durasi> - Jadwalkan puasa freestyle
 /status - Cek status akun & fasting
 /buka - Batalkan fasting hari ini
 /hapus - Hapus jadwal fasting aktif
@@ -245,7 +321,8 @@ Contoh:
 /setname kyomel baru
 /set-puasa 3 05:00
 /set-puasa 8 05:00 48
-/jadwalkan WF 23-05-2026 16:00 12
+/jadwalkan 3 23-05-2026 16:00
+/jadwal-bebas WF 23-05-2026 16:00 12
 /stats
 /leaderboard
 /hapus`

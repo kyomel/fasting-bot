@@ -220,7 +220,13 @@ func (r *ScheduleRepositorySQLite) FindFastingStatsByUserID(userID int64) (*doma
 
 func (r *ScheduleRepositorySQLite) FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error) {
 	rows, err := r.db.Query(`
-		SELECT COALESCE(NULLIF(u.name, ''), u.phone), s.current_streak_days, s.total_minutes, s.total_sessions
+		SELECT COALESCE(
+			NULLIF(u.name, ''),
+			CASE
+				WHEN length(u.phone) >= 6 THEN substr(u.phone, 1, 3) || '***' || substr(u.phone, -2)
+				ELSE 'Anon'
+			END
+		), s.current_streak_days, s.total_minutes, s.total_sessions
 		FROM user_fasting_stats s
 		JOIN users u ON u.id = s.user_id
 		ORDER BY s.total_minutes DESC, s.current_streak_days DESC, s.total_sessions DESC
