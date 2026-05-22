@@ -31,10 +31,19 @@ ALUR PALING SEDERHANA
    Contoh Dry Fasting 18 jam:
    /set-puasa 10 05:00 18
 
-5. Cek status:
+5. Jika ingin menjadwalkan puasa freestyle dengan tanggal khusus:
+   /jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
+
+   Contoh Water Fasting freestyle 12 jam:
+   /jadwalkan WF 23-05-2026 16:00 12
+
+   Contoh Dry Fasting freestyle 10 jam:
+   /jadwalkan DF 23-05-2026 20:00 10
+
+6. Cek status:
    /status
 
-6. Batalkan atau buka puasa hari ini:
+7. Batalkan atau buka puasa hari ini:
    /buka
 
 
@@ -81,6 +90,39 @@ DAFTAR JENIS PUASA SAAT INI
     Cara set: /set-puasa 10 05:00 18
 
 
+PUASA FREESTYLE DENGAN /jadwalkan
+---------------------------------
+Gunakan /jadwalkan jika anggota grup ingin membuat jadwal puasa bebas dengan jenis WF atau DF, tanggal mulai, jam mulai, dan durasi sendiri.
+
+Format:
+/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
+
+Keterangan:
+- WF = Water Fasting
+- DF = Dry Fasting
+- Tanggal memakai format DD-MM-YYYY
+- Jam memakai format HH:MM
+- Durasi memakai angka jam
+
+Contoh:
+/jadwalkan WF 23-05-2026 16:00 12
+
+Artinya:
+- Jenis: Water Fasting
+- Mulai: 23-05-2026 16:00
+- Selesai: 24-05-2026 04:00
+- Durasi: 12 jam
+
+Contoh lain:
+/jadwalkan DF 23-05-2026 20:00 10
+
+Artinya:
+- Jenis: Dry Fasting
+- Mulai: 23-05-2026 20:00
+- Selesai: 24-05-2026 06:00
+- Durasi: 10 jam
+
+
 DAFTAR COMMAND
 --------------
 /daftar <nama>
@@ -94,6 +136,9 @@ Lihat daftar jenis puasa dan contoh cara memilihnya.
 
 /set-puasa <nomor> <jam_mulai> [durasi_jam]
 Pilih jenis puasa dari daftar.
+
+/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>
+Jadwalkan Water Fasting atau Dry Fasting freestyle dengan tanggal dan durasi sendiri.
 
 /status
 Cek status akun dan jadwal puasa.
@@ -116,3 +161,8 @@ CATATAN FORMAT
 - Nomor 8 harus memakai durasi 24, 36, 48, atau 72 jam.
 - Nomor 9 minimal 24 jam.
 - Nomor 10 minimal 1 jam.
+- Untuk /jadwalkan, format tanggal adalah DD-MM-YYYY, contoh: 23-05-2026.
+- Untuk /jadwalkan, jenis puasa hanya WF atau DF.
+- Untuk /jadwalkan, tanggal dan jam mulai harus setelah waktu sekarang.
+- Untuk /set-puasa, jika jam mulai hari ini sudah lewat, bot otomatis menjadwalkan mulai besok di jam tersebut.
+- Balasan bot akan menampilkan tanggal dan jam mulai serta tanggal dan jam selesai agar mudah dipahami.

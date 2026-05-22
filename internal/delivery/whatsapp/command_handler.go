@@ -119,6 +119,9 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 	case "/set-puasa":
 		return h.handleSetPuasa(phone, args)
 
+	case "/jadwalkan":
+		return h.handleJadwalkan(phone, args)
+
 	case "/status":
 		resp, err := h.usecase.GetStatus(phone)
 		if err != nil {
@@ -148,7 +151,7 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 
 func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, error) {
 	if len(args) < 2 {
-		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry Fasting (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48", nil
+		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry Fasting (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48\n\nFreestyle WF/DF dengan tanggal: /jadwalkan WF 23-05-2026 16:00 12", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])
@@ -174,6 +177,25 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, er
 	return resp, nil
 }
 
+func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, error) {
+	if len(args) != 4 {
+		return "❌ Format salah.\nGunakan: /jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>\nContoh: /jadwalkan WF 23-05-2026 16:00 12", nil
+	}
+
+	kind := strings.ToUpper(args[0])
+	durationHours, err := strconv.Atoi(args[3])
+	if err != nil {
+		return "❌ Durasi jam harus angka.\nContoh: /jadwalkan WF 23-05-2026 16:00 12", nil
+	}
+
+	resp, err := h.usecase.ScheduleFreestyleFasting(phone, kind, args[1], args[2], durationHours)
+	if err != nil {
+		log.Printf("[ERROR] ScheduleFreestyleFasting(%s, %s): %v", phone, kind, err)
+		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
+	}
+	return resp, nil
+}
+
 func getHelpText() string {
 	return `🤖 *Fasting Bot - Daftar Perintah*
 
@@ -181,6 +203,7 @@ func getHelpText() string {
 /setname <nama> - Ubah nama user
 /list-puasa - Lihat jenis-jenis puasa
 /set-puasa <nomor> <jam> [durasi] - Pilih jenis puasa
+/jadwalkan <WF|DF> <tanggal> <jam> <durasi> - Jadwalkan puasa freestyle
 /status - Cek status akun & fasting
 /buka - Batalkan fasting hari ini
 /help - Tampilkan bantuan ini
@@ -189,5 +212,6 @@ Contoh:
 /daftar kyomel
 /setname kyomel baru
 /set-puasa 3 05:00
-/set-puasa 8 05:00 48`
+/set-puasa 8 05:00 48
+/jadwalkan WF 23-05-2026 16:00 12`
 }

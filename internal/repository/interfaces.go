@@ -15,8 +15,8 @@ type ScheduleRepository interface {
 	Create(schedule *domain.FastingSchedule) error
 	DeactivateByUserID(userID int64) error
 	FindActiveByUserID(userID int64) (*domain.FastingSchedule, error)
-	FindUsersToNotifyStart(currentTime, currentDate string) ([]NotificationTarget, error)
-	FindUsersToNotifyEnd(currentTime, currentDate string) ([]NotificationTarget, error)
+	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
+	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 }
 
 type NotificationRepository interface {

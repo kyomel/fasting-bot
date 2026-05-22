@@ -6,8 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"fasting-bot/internal/config"
 	"fasting-bot/internal/domain"
 	"fasting-bot/internal/repository"
+)
+
+const (
+	clockLayout       = "15:04"
+	inputDateLayout   = "02-01-2006"
+	storeLayout       = "2006-01-02 15:04"
+	displayDateLayout = "02-01-2006 15:04"
 )
 
 type FastingUsecase interface {
@@ -17,6 +25,7 @@ type FastingUsecase interface {
 	GetStatus(phone string) (string, error)
 	CancelToday(phone string) (string, error)
 	SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error)
+	ScheduleFreestyleFasting(phone, kind, dateInput, startTime string, durationHours int) (string, error)
 }
 
 type fastingUsecase struct {
@@ -88,11 +97,17 @@ func (u *fastingUsecase) SetName(phone, name string) (string, error) {
 }
 
 func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
-	if _, err := time.Parse("15:04", start); err != nil {
+	startTime, err := nextStartFromClock(start)
+	if err != nil {
 		return "❌ Format waktu mulai salah. Gunakan HH:MM (contoh: 05:00)", nil
 	}
-	if _, err := time.Parse("15:04", end); err != nil {
+	endClock, err := parseClock(end)
+	if err != nil {
 		return "❌ Format waktu selesai salah. Gunakan HH:MM (contoh: 18:00)", nil
+	}
+	endTime := time.Date(startTime.Year(), startTime.Month(), startTime.Day(), endClock.Hour(), endClock.Minute(), 0, 0, config.Location)
+	if !endTime.After(startTime) {
+		endTime = endTime.AddDate(0, 0, 1)
 	}
 
 	user, err := u.userRepo.FindByPhone(phone)
@@ -107,14 +122,14 @@ func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
 
 	schedule := &domain.FastingSchedule{
 		UserID:    user.ID,
-		FastStart: start,
-		FastEnd:   end,
+		FastStart: formatStoredTime(startTime),
+		FastEnd:   formatStoredTime(endTime),
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
 		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
 	}
 
-	return fmt.Sprintf("✅ *Jadwal Fasting Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", start, end), nil
+	return fmt.Sprintf("✅ *Jadwal Fasting Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", formatDisplayTime(startTime), formatDisplayTime(endTime)), nil
 }
 
 func (u *fastingUsecase) GetStatus(phone string) (string, error) {
@@ -136,12 +151,12 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 		return fmt.Sprintf("📋 *Status Akun*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal fasting.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", user.ID, name, user.Phone), nil
 	}
 
-	now := time.Now()
-	startTime, _ := time.Parse("15:04", schedule.FastStart)
-	endTime, _ := time.Parse("15:04", schedule.FastEnd)
-
-	startTime = time.Date(now.Year(), now.Month(), now.Day(), startTime.Hour(), startTime.Minute(), 0, 0, now.Location())
-	endTime = time.Date(now.Year(), now.Month(), now.Day(), endTime.Hour(), endTime.Minute(), 0, 0, now.Location())
+	now := time.Now().In(config.Location)
+	startTime, startHasDate := parseScheduleTime(schedule.FastStart, now)
+	endTime, endHasDate := parseScheduleTime(schedule.FastEnd, now)
+	if !startHasDate && !endHasDate && !endTime.After(startTime) {
+		endTime = endTime.AddDate(0, 0, 1)
+	}
 
 	var status string
 	if now.Before(startTime) {
@@ -152,7 +167,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 		status = "✅ Fasting hari ini sudah selesai!"
 	}
 
-	return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\nJadwal: %s - %s\n\n%s", user.ID, name, user.Phone, schedule.FastStart, schedule.FastEnd, status), nil
+	return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\nJadwal: %s - %s\n\n%s", user.ID, name, user.Phone, formatScheduleDisplay(schedule.FastStart), formatScheduleDisplay(schedule.FastEnd), status), nil
 }
 
 func (u *fastingUsecase) CancelToday(phone string) (string, error) {
@@ -177,7 +192,8 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 		return "❌ Jenis puasa tidak ditemukan. Kirim /list-puasa untuk melihat daftar.", nil
 	}
 
-	if _, err := time.Parse("15:04", startTime); err != nil {
+	startDateTime, err := nextStartFromClock(startTime)
+	if err != nil {
 		return "❌ Format jam mulai salah. Gunakan HH:MM (contoh: 05:00)", nil
 	}
 
@@ -189,51 +205,149 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
 
-	var endTime string
+	var fastHours int
 	var fastingTypeName string
 
 	switch fastingType.ID {
 	case 1, 2, 3, 4, 5, 6, 7:
-		endTime = calculateEndTime(startTime, fastingType.FastHours)
+		fastHours = fastingType.FastHours
 		fastingTypeName = fastingType.Name
 	case 8:
 		if durationHours != 24 && durationHours != 36 && durationHours != 48 && durationHours != 72 {
 			return "❌ Durasi Water Fasting harus 24, 36, 48, atau 72 jam.", nil
 		}
-		endTime = calculateEndTime(startTime, durationHours)
+		fastHours = durationHours
 		fastingTypeName = fmt.Sprintf("Water Fasting %d jam", durationHours)
 	case 9:
 		if durationHours < 24 {
 			return "❌ Water Fasting bebas minimal 24 jam.", nil
 		}
-		endTime = calculateEndTime(startTime, durationHours)
+		fastHours = durationHours
 		fastingTypeName = fmt.Sprintf("Water Fasting %d jam", durationHours)
 	case 10:
 		if durationHours < 1 {
 			return "❌ Durasi Dry Fasting harus minimal 1 jam.", nil
 		}
-		endTime = calculateEndTime(startTime, durationHours)
+		fastHours = durationHours
 		fastingTypeName = fmt.Sprintf("Dry Fasting %d jam", durationHours)
+	}
+	endDateTime := calculateEndDateTime(startDateTime, fastHours)
+
+	u.scheduleRepo.DeactivateByUserID(user.ID)
+
+	schedule := &domain.FastingSchedule{
+		UserID:    user.ID,
+		FastStart: formatStoredTime(startDateTime),
+		FastEnd:   formatStoredTime(endDateTime),
+	}
+	if err := u.scheduleRepo.Create(schedule); err != nil {
+		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
+	}
+
+	return fmt.Sprintf("✅ *Jadwal %s Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime)), nil
+}
+
+func (u *fastingUsecase) ScheduleFreestyleFasting(phone, kind, dateInput, startTime string, durationHours int) (string, error) {
+	fastingTypeName, err := freestyleFastingTypeName(kind)
+	if err != nil {
+		return "❌ Jenis puasa freestyle hanya WF atau DF.\nContoh: /jadwalkan WF 23-05-2026 16:00 12", nil
+	}
+	if durationHours < 1 {
+		return "❌ Durasi puasa harus minimal 1 jam.", nil
+	}
+
+	startDateTime, err := time.ParseInLocation(inputDateLayout+" "+clockLayout, dateInput+" "+startTime, config.Location)
+	if err != nil {
+		return "❌ Format jadwal salah. Gunakan: /jadwalkan WF DD-MM-YYYY HH:MM durasi_jam\nContoh: /jadwalkan WF 23-05-2026 16:00 12", nil
+	}
+
+	now := time.Now().In(config.Location)
+	if !startDateTime.After(now) {
+		return "❌ Tanggal dan jam mulai sudah lewat. Pilih waktu setelah sekarang.", nil
+	}
+	endDateTime := calculateEndDateTime(startDateTime, durationHours)
+
+	user, err := u.userRepo.FindByPhone(phone)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu.", nil
+		}
+		return "", fmt.Errorf("gagal memeriksa data: %w", err)
 	}
 
 	u.scheduleRepo.DeactivateByUserID(user.ID)
 
 	schedule := &domain.FastingSchedule{
 		UserID:    user.ID,
-		FastStart: startTime,
-		FastEnd:   endTime,
+		FastStart: formatStoredTime(startDateTime),
+		FastEnd:   formatStoredTime(endDateTime),
 	}
 	if err := u.scheduleRepo.Create(schedule); err != nil {
 		return "", fmt.Errorf("gagal menyimpan jadwal: %w", err)
 	}
 
-	return fmt.Sprintf("✅ *Jadwal %s Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, startTime, endTime), nil
+	return fmt.Sprintf("✅ *Jadwal %s Freestyle Tersimpan!*\nMulai: %s\nSelesai: %s\nDurasi: %d jam\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime), durationHours), nil
 }
 
-func calculateEndTime(start string, hours int) string {
-	startTime, _ := time.Parse("15:04", start)
-	endTime := startTime.Add(time.Duration(hours) * time.Hour)
-	return endTime.Format("15:04")
+func freestyleFastingTypeName(kind string) (string, error) {
+	switch kind {
+	case "WF":
+		return "Water Fasting (WF)", nil
+	case "DF":
+		return "Dry Fasting (DF)", nil
+	default:
+		return "", fmt.Errorf("jenis puasa freestyle tidak valid")
+	}
+}
+
+func parseClock(value string) (time.Time, error) {
+	return time.ParseInLocation(clockLayout, value, config.Location)
+}
+
+func nextStartFromClock(value string) (time.Time, error) {
+	clock, err := parseClock(value)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	now := time.Now().In(config.Location)
+	candidate := time.Date(now.Year(), now.Month(), now.Day(), clock.Hour(), clock.Minute(), 0, 0, config.Location)
+	if !candidate.After(now) {
+		candidate = candidate.AddDate(0, 0, 1)
+	}
+	return candidate, nil
+}
+
+func calculateEndDateTime(start time.Time, hours int) time.Time {
+	return start.Add(time.Duration(hours) * time.Hour)
+}
+
+func formatStoredTime(t time.Time) string {
+	return t.In(config.Location).Format(storeLayout)
+}
+
+func formatDisplayTime(t time.Time) string {
+	return t.In(config.Location).Format(displayDateLayout)
+}
+
+func formatScheduleDisplay(value string) string {
+	t, err := time.ParseInLocation(storeLayout, value, config.Location)
+	if err != nil {
+		return value
+	}
+	return formatDisplayTime(t)
+}
+
+func parseScheduleTime(value string, now time.Time) (time.Time, bool) {
+	if t, err := time.ParseInLocation(storeLayout, value, config.Location); err == nil {
+		return t, true
+	}
+
+	clock, err := parseClock(value)
+	if err != nil {
+		return now, false
+	}
+	return time.Date(now.Year(), now.Month(), now.Day(), clock.Hour(), clock.Minute(), 0, 0, config.Location), false
 }
 
 func formatDuration(d time.Duration) string {

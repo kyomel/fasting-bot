@@ -18,11 +18,13 @@ import (
 
 func main() {
 	_ = godotenv.Load() // ignore error — production uses systemd EnvironmentFile
+	config.Load()
 
 	fmt.Println("🤖 Fasting Bot Starting...")
 	fmt.Printf("Bot Number: %s\n", config.BotNumber)
 	fmt.Printf("Admin Number: %s\n", config.AdminNumber)
 	fmt.Printf("Group Name: %s\n", config.GroupName)
+	fmt.Printf("Timezone: %s\n", config.AppTimezone)
 
 	db, err := database.New()
 	if err != nil {
@@ -48,7 +50,7 @@ func main() {
 	waClient.WA.AddEventHandler(handler.HandleEvent)
 
 	notifier := waInfra.NewNotifier(waClient.WA)
-	scheduler := whatsapp.NewScheduler(scheduleRepo, notifier)
+	scheduler := whatsapp.NewScheduler(scheduleRepo, notificationRepo, notifier)
 	scheduler.Start()
 	defer scheduler.Stop()
 	fmt.Println("✅ Scheduler started")

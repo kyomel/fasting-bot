@@ -148,6 +148,7 @@ Session akan tersimpan di `whatsapp-session.db`, jadi tidak perlu scan QR tiap k
 | `/setname <nama>` | Ubah nama user yang sudah terdaftar | `/setname kyomel baru` |
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
+| `/jadwalkan <WF\|DF> <tanggal> <jam> <durasi>` | Jadwalkan Water/Dry Fasting freestyle | `/jadwalkan WF 23-05-2026 16:00 12` |
 | `/status` | Cek status fasting, nama, nomor, dan ID user yang terdaftar | `/status` |
 | `/buka` | Buka puasa / batalkan fasting | `/buka` |
 | `/help` | Tampilkan bantuan | `/help` |
@@ -179,6 +180,14 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 3. Pilih Water/Dry Fasting (8-10): `/set-puasa <nomor> <jam_mulai> <durasi_jam>`
    - Contoh: `/set-puasa 8 05:00 48` → Water Fasting 48 jam dari jam 05:00
    - Contoh: `/set-puasa 10 05:00 18` → Dry Fasting 18 jam dari jam 05:00
+4. Jadwalkan WF/DF freestyle dengan tanggal: `/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`
+   - Contoh: `/jadwalkan WF 23-05-2026 16:00 12` → Water Fasting 12 jam dari 23-05-2026 16:00 sampai 24-05-2026 04:00
+   - Contoh: `/jadwalkan DF 23-05-2026 20:00 10` → Dry Fasting 10 jam dari 23-05-2026 20:00 sampai 24-05-2026 06:00
+
+Catatan waktu:
+- Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
+- Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
+- Balasan bot menampilkan tanggal dan jam mulai/selesai agar jadwal lebih mudah dipahami.
 
 ## Menambah Fitur Baru
 

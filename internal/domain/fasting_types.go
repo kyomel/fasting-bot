@@ -49,6 +49,9 @@ func GetFastingTypesList() string {
 	result += "2. Kirim: `/set-puasa <nomor> <jam_mulai>`\n"
 	result += "   Contoh: `/set-puasa 3 05:00`\n"
 	result += "3. Untuk nomor 8-10, tambahkan durasi jam.\n"
-	result += "   Contoh: `/set-puasa 8 05:00 48`"
+	result += "   Contoh: `/set-puasa 8 05:00 48`\n\n"
+	result += "*Freestyle WF/DF dengan tanggal:*\n"
+	result += "`/jadwalkan <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`\n"
+	result += "Contoh: `/jadwalkan WF 23-05-2026 16:00 12`"
 	return result
 }
