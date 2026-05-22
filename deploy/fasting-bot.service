@@ -27,7 +27,7 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/opt/fasting-bot/data /opt/fasting-bot/fasting-bot.db /opt/fasting-bot/whatsapp-session.db
+ReadWritePaths=/opt/fasting-bot
 
 [Install]
 WantedBy=multi-user.target
