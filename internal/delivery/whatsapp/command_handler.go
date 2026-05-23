@@ -93,9 +93,20 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 }
 
 func isAuthorized(phone, chatJID string, isGroup bool) bool {
+	if isAdminPhone(phone) {
+		if !isGroup {
+			return true
+		}
+		return config.AllowedGroupJID != "" && chatJID == config.AllowedGroupJID
+	}
+
 	if isGroup {
 		return config.AllowedGroupJID != "" && chatJID == config.AllowedGroupJID
 	}
+	return false
+}
+
+func isAdminPhone(phone string) bool {
 	return normalizePhone(phone) == normalizePhone(config.AdminNumber)
 }
 
