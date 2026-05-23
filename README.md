@@ -5,7 +5,7 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 ## Fitur
 
 - ⏰ Notifikasi otomatis saat fasting mulai dan berakhir
-- 📱 Bisa digunakan di grup maupun DM personal
+- 📱 Bisa digunakan di grup
 - 🗄️ Database SQLite (ringan, tanpa server)
 - 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /jadwalkan, /jadwal-bebas, /status, /buka, /hapus
 
