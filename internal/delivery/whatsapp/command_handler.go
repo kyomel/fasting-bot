@@ -86,7 +86,9 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 		Conversation: proto.String(response),
 	})
 	if sendErr != nil {
-		log.Printf("[ERROR] SendMessage failed: %v", sendErr)
+		log.Printf("[ERROR] SendMessage to %s (%d chars): %v", replyTo.String(), len(response), sendErr)
+	} else {
+		log.Printf("📤 Sent to %s (%d chars)", replyTo.String(), len(response))
 	}
 }
 
