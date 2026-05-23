@@ -28,6 +28,7 @@ type FastingUsecase interface {
 	SetSchedule(phone, start, end string) (string, error)
 	GetStatus(phone string) (string, error)
 	CancelToday(phone string) (string, error)
+	BreakFastingAt(phone, dateInput, openTime string) (string, error)
 	DeleteSchedule(phone string) (string, error)
 	GetStats(phone string) (string, error)
 	GetLeaderboard() (string, error)
@@ -184,6 +185,25 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 }
 
 func (u *fastingUsecase) CancelToday(phone string) (string, error) {
+	now := time.Now().In(config.Location)
+	return u.finishFastAt(phone, now, true)
+}
+
+func (u *fastingUsecase) BreakFastingAt(phone, dateInput, openTime string) (string, error) {
+	openedAt, err := time.ParseInLocation(inputDateLayout+" "+clockLayout, dateInput+" "+openTime, config.Location)
+	if err != nil {
+		return "❌ Format /buka salah. Gunakan: /buka DD-MM-YYYY HH:MM\nContoh: /buka 23-05-2026 18:30", nil
+	}
+
+	now := time.Now().In(config.Location).Truncate(time.Minute)
+	if openedAt.After(now) {
+		return "❌ Waktu buka tidak boleh di masa depan.", nil
+	}
+
+	return u.finishFastAt(phone, openedAt, false)
+}
+
+func (u *fastingUsecase) finishFastAt(phone string, openedAt time.Time, allowCancelBeforeStart bool) (string, error) {
 	user, err := u.lookupUser(phone)
 	if err != nil {
 		return "", err
@@ -200,12 +220,18 @@ func (u *fastingUsecase) CancelToday(phone string) (string, error) {
 		return "ℹ️ Belum ada jadwal fasting aktif untuk dibuka.", nil
 	}
 
-	now := time.Now().In(config.Location)
-	startTime, _ := parseScheduleTime(schedule.FastStart, now)
-	if now.Before(startTime) {
+	startTime, _ := parseScheduleTime(schedule.FastStart, openedAt)
+	plannedEndTime, _ := parseScheduleTime(schedule.FastEnd, openedAt)
+	if !plannedEndTime.After(startTime) {
+		plannedEndTime = plannedEndTime.AddDate(0, 0, 1)
+	}
+	if openedAt.Before(startTime) {
+		if !allowCancelBeforeStart {
+			return fmt.Sprintf("❌ Waktu buka tidak boleh sebelum puasa mulai.\nMulai: %s\nBuka yang kamu input: %s", formatDisplayTime(startTime), formatDisplayTime(openedAt)), nil
+		}
 		return u.cancelBeforeStart(user.ID, startTime)
 	}
-	return u.breakFasting(user, schedule, startTime, now)
+	return u.breakFasting(user, schedule, startTime, plannedEndTime, openedAt)
 }
 
 func (u *fastingUsecase) lookupUser(phone string) (*domain.User, error) {
@@ -240,11 +266,12 @@ func (u *fastingUsecase) cancelBeforeStart(userID int64, startTime time.Time) (s
 	return fmt.Sprintf("ℹ️ Jadwal fasting dibatalkan.\nMulai: %s\n\nKarena /buka dilakukan sebelum jam puasa mulai, durasi tidak dihitung ke /stats.", formatDisplayTime(startTime)), nil
 }
 
-func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.FastingSchedule, startTime, now time.Time) (string, error) {
-	durationMinutes := int(now.Sub(startTime).Minutes())
+func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.FastingSchedule, startTime, plannedEndTime, openedAt time.Time) (string, error) {
+	durationMinutes := int(openedAt.Sub(startTime).Minutes())
 	if durationMinutes < 0 {
 		durationMinutes = 0
 	}
+	streakQualified := !openedAt.Before(plannedEndTime)
 
 	record := &domain.FastingRecord{
 		UserID:          user.ID,
@@ -252,9 +279,10 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 		FastingTypeName: schedule.FastingTypeName,
 		FastStart:       schedule.FastStart,
 		PlannedFastEnd:  schedule.FastEnd,
-		OpenedAt:        formatStoredTime(now),
+		OpenedAt:        formatStoredTime(openedAt),
 		DurationMinutes: durationMinutes,
-		CompletedDate:   now.Format("2006-01-02"),
+		CompletedDate:   openedAt.Format("2006-01-02"),
+		StreakQualified: streakQualified,
 	}
 	if err := u.scheduleRepo.CreateFastingRecord(record); err != nil {
 		return "", fmt.Errorf("gagal menyimpan hasil buka puasa: %w", err)
@@ -269,7 +297,12 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 		return "", fmt.Errorf("gagal membatalkan: %w", err)
 	}
 
-	return fmt.Sprintf("✅ Fasting dibuka. Selamat berbuka! 🎉\nJenis Puasa: %s\nMulai: %s\nBuka: %s\nTotal waktu puasa: %s\n\nHasil ini sudah masuk ke /stats.", displayFastingTypeName(schedule.FastingTypeName), formatDisplayTime(startTime), formatDisplayTime(now), formatDurationWithDays(durationMinutes)), nil
+	streakNote := "Streak puasa diperbarui karena kamu sudah melewati jam puasa yang ditentukan."
+	if !streakQualified {
+		streakNote = fmt.Sprintf("Streak belum bertambah karena buka sebelum jadwal selesai (%s).", formatDisplayTime(plannedEndTime))
+	}
+
+	return fmt.Sprintf("✅ Fasting dibuka. Selamat berbuka! 🎉\nJenis Puasa: %s\nMulai: %s\nJadwal selesai: %s\nBuka: %s\nTotal waktu puasa: %s\n\nHasil ini sudah masuk ke /stats.\n%s", displayFastingTypeName(schedule.FastingTypeName), formatDisplayTime(startTime), formatDisplayTime(plannedEndTime), formatDisplayTime(openedAt), formatDurationWithDays(durationMinutes), streakNote), nil
 }
 
 func (u *fastingUsecase) DeleteSchedule(phone string) (string, error) {

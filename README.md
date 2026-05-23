@@ -147,7 +147,7 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 | `/jadwalkan <nomor> <tanggal> <jam> [durasi]` | Seperti `/set-puasa`, tetapi memakai tanggal eksplisit. Boleh memakai waktu lampau untuk restore progres yang ter-reset. Tidak memakai kode WF/DF | `/jadwalkan 3 23-05-2026 16:00` |
 | `/jadwal-bebas <WF\|DF> <tanggal> <jam> <durasi>` | Khusus Water/Dry Fasting freestyle dengan kode WF/DF | `/jadwal-bebas WF 23-05-2026 16:00 12` |
 | `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan | `/status` |
-| `/buka` | Buka puasa / batalkan fasting. Jika puasa sudah mulai, durasi dicatat ke stats | `/buka` |
+| `/buka [tanggal jam]` | Buka puasa / batalkan fasting. Pakai tanggal dan jam jika lupa mencatat waktu berbuka | `/buka 23-05-2026 18:30` |
 | `/hapus` | Hapus jadwal puasa aktif. Setelah dihapus, `/status` akan menampilkan belum ada jadwal fasting | `/hapus` |
 | `/stats` | Lihat statistik hasil buka puasa pribadi | `/stats` |
 | `/leaderboard` | Lihat klasemen puasa berdasarkan total waktu puasa | `/leaderboard` |
@@ -194,6 +194,8 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 7. Buka puasa: `/buka`
    - Jika puasa sudah mulai, bot mencatat total waktu puasa ke `/stats` dalam format hari, jam, dan menit.
    - Jika `/buka` dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
+   - Jika lupa mengirim `/buka`, pakai `/buka DD-MM-YYYY HH:MM` untuk mencatat jam berbuka yang sebenarnya.
+   - Contoh: `/buka 23-05-2026 18:30`
 8. Cek statistik dan klasemen: `/stats` atau `/leaderboard`
    - `/leaderboard` diurutkan berdasarkan total waktu puasa terbesar.
 9. Hapus jadwal aktif jika ingin mengosongkan status: `/hapus`
@@ -202,10 +204,12 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 Catatan waktu:
 - Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
 - Format tanggal untuk `/jadwal-bebas` adalah `DD-MM-YYYY`.
+- Format tanggal untuk `/buka` manual adalah `DD-MM-YYYY HH:MM`.
 - `/jadwalkan` mengikuti format nomor `/set-puasa`: nomor 1-7 tanpa durasi, nomor 8-10 wajib durasi. Kode `WF`/`DF` hanya untuk `/jadwal-bebas`.
 - `/jadwalkan` dan `/jadwal-bebas` boleh memakai tanggal/jam mulai yang sudah lewat untuk restore progres. Setelah itu gunakan `/buka` saat benar-benar berbuka supaya durasi masuk ke `/stats`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
-- Streak puasa dihitung dari tanggal kalender lokal saat puasa berjalan. Jika ada satu hari kalender tanpa puasa berjalan, streak saat ini otomatis kembali ke 0 saat `/stats` atau `/leaderboard` dibuka.
+- Streak puasa bertambah 1 setiap `/buka` yang dilakukan pada atau setelah jam selesai puasa yang ditentukan. Jika `/buka` dilakukan sebelum jadwal selesai, total durasi tetap masuk `/stats`, tetapi streak tidak bertambah.
+- Jika lewat 24 jam dari `/buka` terakhir yang memenuhi jadwal dan tidak ada puasa aktif yang sedang berjalan, streak saat ini otomatis kembali ke 0 saat `/stats` atau `/leaderboard` dibuka.
 - `/stats` hanya menghitung hasil puasa dari `/buka` setelah puasa dimulai.
 - Progres total `/stats` dan `/leaderboard` disimpan di ringkasan permanen, sehingga riwayat mentah lama bisa dibersihkan tanpa mengurangi total user.
 - Bot membersihkan riwayat mentah lama dan jadwal nonaktif lama setiap 3 hari agar database tetap ringan. Cleanup akan melewati user yang masih punya jadwal puasa aktif.

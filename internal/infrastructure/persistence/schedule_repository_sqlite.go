@@ -68,7 +68,11 @@ func (r *ScheduleRepositorySQLite) CreateFastingRecord(record *domain.FastingRec
 }
 
 func (r *ScheduleRepositorySQLite) UpsertFastingStats(record *domain.FastingRecord) error {
-	fastStartDate, completedDate, fastingDays, err := fastingDateRange(record)
+	_, completedDate, _, err := fastingDateRange(record)
+	if err != nil {
+		return err
+	}
+	openedAt, err := time.Parse(storeDateTimeLayout, record.OpenedAt)
 	if err != nil {
 		return err
 	}
@@ -79,54 +83,91 @@ func (r *ScheduleRepositorySQLite) UpsertFastingStats(record *domain.FastingReco
 	}
 	defer tx.Rollback()
 
-	var currentStreakDays, longestStreakDays int
-	var lastCompletedDate string
-	err = tx.QueryRow(`
-		SELECT current_streak_days, longest_streak_days, last_completed_date
+	stats, err := r.getExistingStats(tx, record.UserID)
+	if err != nil {
+		return err
+	}
+
+	if stats == nil {
+		return r.insertNewStats(tx, record, openedAt, completedDate)
+	}
+
+	return r.updateExistingStats(tx, record, openedAt, completedDate, stats)
+}
+
+func (r *ScheduleRepositorySQLite) getExistingStats(tx *sql.Tx, userID int64) (*userFastingStatsRow, error) {
+	var stats userFastingStatsRow
+	err := tx.QueryRow(`
+		SELECT current_streak_days, longest_streak_days, last_completed_date, last_streak_opened_at, last_opened_at
 		FROM user_fasting_stats
 		WHERE user_id = ?
-	`, record.UserID).Scan(&currentStreakDays, &longestStreakDays, &lastCompletedDate)
+	`, userID).Scan(&stats.currentStreakDays, &stats.longestStreakDays, &stats.lastCompletedDate, &stats.lastStreakOpenedAt, &stats.lastOpenedAt)
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
 		}
+		return nil, err
+	}
+	return &stats, nil
+}
 
-		_, err = tx.Exec(`
-			INSERT INTO user_fasting_stats (
-				user_id,
-				total_sessions,
-				total_minutes,
-				current_streak_days,
-				longest_streak_days,
-				last_completed_date,
-				last_opened_at,
-				last_duration_minutes,
-				updated_at
-			) VALUES (?, 1, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-		`, record.UserID, record.DurationMinutes, fastingDays, fastingDays, record.CompletedDate, record.OpenedAt, record.DurationMinutes)
-		if err != nil {
-			return err
-		}
-		return tx.Commit()
+func (r *ScheduleRepositorySQLite) insertNewStats(tx *sql.Tx, record *domain.FastingRecord, openedAt, completedDate time.Time) error {
+	currentStreakDays := nextCurrentStreakDays(0, "", openedAt, record.StreakQualified)
+	longestStreakDays := currentStreakDays
+	lastCompletedDate := ""
+	lastStreakOpenedAt := ""
+	if record.StreakQualified {
+		lastCompletedDate = completedDate.Format(storeDateLayout)
+		lastStreakOpenedAt = record.OpenedAt
 	}
 
-	nextCurrentStreakDays := nextCurrentStreakDays(currentStreakDays, lastCompletedDate, fastStartDate, completedDate, fastingDays)
-	if nextCurrentStreakDays > longestStreakDays {
-		longestStreakDays = nextCurrentStreakDays
+	_, err := tx.Exec(`
+		INSERT INTO user_fasting_stats (
+			user_id,
+			total_sessions,
+			total_minutes,
+			current_streak_days,
+			longest_streak_days,
+			last_completed_date,
+			last_streak_opened_at,
+			last_opened_at,
+			last_duration_minutes,
+			updated_at
+		) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`, record.UserID, record.DurationMinutes, currentStreakDays, longestStreakDays, lastCompletedDate, lastStreakOpenedAt, record.OpenedAt, record.DurationMinutes)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r *ScheduleRepositorySQLite) updateExistingStats(tx *sql.Tx, record *domain.FastingRecord, openedAt, completedDate time.Time, stats *userFastingStatsRow) error {
+	if stats.lastStreakOpenedAt == "" && stats.currentStreakDays > 0 {
+		stats.lastStreakOpenedAt = stats.lastOpenedAt
 	}
 
-	_, err = tx.Exec(`
+	nextCurrentStreakDays := nextCurrentStreakDays(stats.currentStreakDays, stats.lastStreakOpenedAt, openedAt, record.StreakQualified)
+	if nextCurrentStreakDays > stats.longestStreakDays {
+		stats.longestStreakDays = nextCurrentStreakDays
+	}
+	if record.StreakQualified && !openedAt.Before(parseStoredDateTimeOrZero(stats.lastStreakOpenedAt)) {
+		stats.lastCompletedDate = completedDate.Format(storeDateLayout)
+		stats.lastStreakOpenedAt = record.OpenedAt
+	}
+
+	_, err := tx.Exec(`
 		UPDATE user_fasting_stats
 		SET total_sessions = total_sessions + 1,
 			total_minutes = total_minutes + ?,
 			current_streak_days = ?,
 			longest_streak_days = ?,
 			last_completed_date = ?,
+			last_streak_opened_at = ?,
 			last_opened_at = ?,
 			last_duration_minutes = ?,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE user_id = ?
-	`, record.DurationMinutes, nextCurrentStreakDays, longestStreakDays, record.CompletedDate, record.OpenedAt, record.DurationMinutes, record.UserID)
+	`, record.DurationMinutes, nextCurrentStreakDays, stats.longestStreakDays, stats.lastCompletedDate, stats.lastStreakOpenedAt, record.OpenedAt, record.DurationMinutes, record.UserID)
 	if err != nil {
 		return err
 	}
@@ -134,13 +175,23 @@ func (r *ScheduleRepositorySQLite) UpsertFastingStats(record *domain.FastingReco
 	return tx.Commit()
 }
 
+type userFastingStatsRow struct {
+	currentStreakDays  int
+	longestStreakDays  int
+	lastCompletedDate  string
+	lastStreakOpenedAt string
+	lastOpenedAt       string
+}
+
 func (r *ScheduleRepositorySQLite) ResetStaleCurrentStreaks(currentDate, currentDateTime string) error {
+	_ = currentDate
 	_, err := r.db.Exec(`
 		UPDATE user_fasting_stats
 		SET current_streak_days = 0,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE current_streak_days > 0
-		AND last_completed_date < date(?, '-1 day')
+		AND last_streak_opened_at != ''
+		AND datetime(last_streak_opened_at, '+24 hours') < datetime(?)
 		AND NOT EXISTS (
 			SELECT 1
 			FROM fasting_schedules fs
@@ -149,10 +200,8 @@ func (r *ScheduleRepositorySQLite) ResetStaleCurrentStreaks(currentDate, current
 			AND length(fs.fast_start) > 5
 			AND length(fs.fast_end) > 5
 			AND fs.fast_start <= ?
-			AND date(fs.fast_start) <= date(user_fasting_stats.last_completed_date, '+1 day')
-			AND date(fs.fast_end) >= date(user_fasting_stats.last_completed_date, '+1 day')
 		)
-	`, currentDate, currentDateTime)
+	`, currentDateTime, currentDateTime)
 	return err
 }
 
@@ -175,29 +224,42 @@ func fastingDateRange(record *domain.FastingRecord) (time.Time, time.Time, int, 
 	return fastStartDate, completedDate, fastingDays, nil
 }
 
-func nextCurrentStreakDays(currentStreakDays int, lastCompletedDate string, fastStartDate, completedDate time.Time, fastingDays int) int {
-	lastCompleted, err := time.Parse(storeDateLayout, lastCompletedDate)
-	if err != nil {
-		return fastingDays
-	}
-
-	if completedDate.Equal(lastCompleted) {
-		if fastingDays > currentStreakDays {
-			return fastingDays
+func nextCurrentStreakDays(currentStreakDays int, lastStreakOpenedAt string, openedAt time.Time, streakQualified bool) int {
+	if !streakQualified {
+		if isStreakExpired(lastStreakOpenedAt, openedAt) {
+			return 0
 		}
 		return currentStreakDays
 	}
-	if completedDate.Before(lastCompleted) {
+
+	lastOpened, err := time.Parse(storeDateTimeLayout, lastStreakOpenedAt)
+	if err != nil {
+		return 1
+	}
+	if openedAt.Before(lastOpened) {
 		return currentStreakDays
 	}
-
-	firstAllowedDate := lastCompleted.AddDate(0, 0, 1)
-	if fastStartDate.After(firstAllowedDate) {
-		return fastingDays
+	if openedAt.Sub(lastOpened) > 24*time.Hour {
+		return 1
 	}
 
-	newCoveredDays := int(completedDate.Sub(lastCompleted).Hours() / 24)
-	return currentStreakDays + newCoveredDays
+	return currentStreakDays + 1
+}
+
+func isStreakExpired(lastStreakOpenedAt string, now time.Time) bool {
+	lastOpened, err := time.Parse(storeDateTimeLayout, lastStreakOpenedAt)
+	if err != nil {
+		return false
+	}
+	return now.Sub(lastOpened) > 24*time.Hour
+}
+
+func parseStoredDateTimeOrZero(value string) time.Time {
+	t, err := time.Parse(storeDateTimeLayout, value)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
 }
 
 func truncateDate(t time.Time) time.Time {

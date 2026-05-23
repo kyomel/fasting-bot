@@ -162,6 +162,9 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 		})
 
 	case "/buka", "/cancel":
+		if len(args) > 0 {
+			return h.handleBuka(phone, args)
+		}
 		return h.callUsecase(phone, "CancelToday", func() (string, error) {
 			return h.usecase.CancelToday(phone)
 		})
@@ -210,6 +213,7 @@ var errorLabels = map[string]string{
 	"SetName":        "mengubah nama",
 	"GetStatus":      "mengambil status",
 	"CancelToday":    "membatalkan",
+	"BreakFastingAt": "membuka puasa",
 	"DeleteSchedule": "menghapus jadwal",
 	"GetStats":       "mengambil stats",
 	"GetLeaderboard": "mengambil leaderboard",
@@ -302,6 +306,16 @@ func (h *CommandHandler) handleJadwalBebas(phone string, args []string) (string,
 	return resp, nil
 }
 
+func (h *CommandHandler) handleBuka(phone string, args []string) (string, error) {
+	if len(args) != 2 {
+		return "❌ Format salah.\nGunakan: /buka DD-MM-YYYY HH:MM\nContoh: /buka 23-05-2026 18:30", nil
+	}
+
+	return h.callUsecase(phone, "BreakFastingAt", func() (string, error) {
+		return h.usecase.BreakFastingAt(phone, args[0], args[1])
+	})
+}
+
 func getHelpText() string {
 	return `🤖 *Fasting Bot - Daftar Perintah*
 
@@ -312,7 +326,7 @@ func getHelpText() string {
 /jadwalkan <nomor> <tanggal> <jam> [durasi] - Seperti /set-puasa tapi pakai tanggal, bisa rollback
 /jadwal-bebas <WF|DF> <tanggal> <jam> <durasi> - Khusus freestyle WF/DF
 /status - Cek status akun & fasting
-/buka - Batalkan fasting hari ini
+/buka [tanggal jam] - Buka puasa sekarang, atau pakai tanggal/jam jika lupa
 /hapus - Hapus jadwal fasting aktif
 /stats - Lihat statistik hasil buka puasa
 /leaderboard - Lihat klasemen puasa
@@ -325,6 +339,7 @@ Contoh:
 /set-puasa 8 05:00 48
 /jadwalkan 3 23-05-2026 16:00
 /jadwal-bebas WF 23-05-2026 16:00 12
+/buka 23-05-2026 18:30
 /stats
 /leaderboard
 /hapus`

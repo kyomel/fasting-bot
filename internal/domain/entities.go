@@ -37,6 +37,7 @@ type FastingRecord struct {
 	OpenedAt        string
 	DurationMinutes int
 	CompletedDate   string
+	StreakQualified bool
 	CreatedAt       time.Time
 }
 

@@ -62,6 +62,12 @@ ALUR PALING SEDERHANA
 8. Batalkan atau buka puasa hari ini:
    /buka
 
+   Jika lupa mengirim /buka, masukkan tanggal dan jam berbuka yang sebenarnya:
+   /buka DD-MM-YYYY HH:MM
+
+   Contoh:
+   /buka 23-05-2026 18:30
+
    Jika puasa sudah mulai, bot mencatat total waktu puasa ke /stats.
    Jika /buka dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
 
@@ -211,7 +217,7 @@ Jadwalkan Water Fasting atau Dry Fasting freestyle dengan kode WF/DF, tanggal, d
 Cek status akun dan jadwal puasa. Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan jika puasa sudah mulai.
 
 /buka
-Batalkan atau buka puasa hari ini. Jika puasa sudah mulai, bot mencatat total waktu puasa dalam format hari, jam, dan menit ke /stats.
+Batalkan atau buka puasa hari ini. Jika puasa sudah mulai, bot mencatat total waktu puasa dalam format hari, jam, dan menit ke /stats. Jika lupa mencatat jam berbuka, gunakan /buka DD-MM-YYYY HH:MM, contoh /buka 23-05-2026 18:30.
 
 /hapus
 Hapus jadwal puasa aktif. Setelah dihapus, /status akan menampilkan belum ada jadwal fasting.
@@ -245,10 +251,12 @@ CATATAN FORMAT
 - Jika jam mulai /set-puasa sama dengan menit sekarang, bot menganggap jadwal mulai sekarang.
 - Saat waktu selesai puasa tiba, bot akan mengirim notifikasi bahwa puasa sudah selesai dan sudah waktunya berbuka.
 - Untuk /buka, total waktu puasa dihitung dari jam mulai sampai waktu /buka dalam format hari, jam, dan menit.
+- Untuk /buka manual, formatnya /buka DD-MM-YYYY HH:MM, contoh: /buka 23-05-2026 18:30. Waktu buka tidak boleh di masa depan dan tidak boleh sebelum jam mulai puasa.
 - Jika /buka dilakukan sebelum jam mulai puasa, durasi tidak dihitung ke /stats.
 - /stats hanya menampilkan hasil puasa yang sudah dicatat lewat /buka setelah puasa dimulai. Data progres total disimpan sebagai ringkasan permanen, bukan bergantung pada riwayat mentah.
 - /leaderboard diurutkan berdasarkan total waktu puasa terbesar dan memakai data ringkasan permanen.
 - Bot menjalankan pembersihan otomatis setiap 3 hari untuk menghapus riwayat mentah lama dan jadwal nonaktif lama supaya database tetap ringan. Pembersihan ini tidak mengurangi total /stats atau /leaderboard, dan tidak menghapus data user yang masih punya jadwal puasa aktif.
-- Streak puasa dihitung dari tanggal kalender lokal saat puasa berjalan. Jika ada satu hari kalender tanpa puasa berjalan, streak saat ini otomatis kembali ke 0 saat /stats atau /leaderboard dibuka.
+- Streak puasa bertambah 1 setiap /buka yang dilakukan pada atau setelah jam selesai puasa yang ditentukan. Jika /buka dilakukan sebelum jadwal selesai, total durasi tetap masuk /stats, tetapi streak tidak bertambah.
+- Jika lewat 24 jam dari /buka terakhir yang memenuhi jadwal dan tidak ada puasa aktif yang sedang berjalan, streak saat ini otomatis kembali ke 0 saat /stats atau /leaderboard dibuka.
 - Balasan bot dan /status akan menampilkan jenis puasa, tanggal dan jam mulai, tanggal dan jam selesai, serta durasi berjalan jika puasa sudah mulai agar mudah dipahami.
 - Gunakan /hapus jika ingin menghapus jadwal aktif supaya /status tidak lagi menampilkan jadwal puasa.

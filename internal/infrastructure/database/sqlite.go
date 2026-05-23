@@ -88,6 +88,7 @@ func migrate(conn *sql.DB) error {
 			current_streak_days INTEGER NOT NULL DEFAULT 0,
 			longest_streak_days INTEGER NOT NULL DEFAULT 0,
 			last_completed_date TEXT NOT NULL DEFAULT '',
+			last_streak_opened_at TEXT NOT NULL DEFAULT '',
 			last_opened_at TEXT NOT NULL DEFAULT '',
 			last_duration_minutes INTEGER NOT NULL DEFAULT 0,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -119,6 +120,18 @@ func migrate(conn *sql.DB) error {
 	}
 
 	if err := addColumnIfMissing(conn, "fasting_schedules", "fasting_type_name", "TEXT DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(conn, "user_fasting_stats", "last_streak_opened_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if _, err := conn.Exec(`
+		UPDATE user_fasting_stats
+		SET last_streak_opened_at = last_opened_at
+		WHERE last_streak_opened_at = ''
+		AND current_streak_days > 0
+		AND last_opened_at != ''
+	`); err != nil {
 		return err
 	}
 
