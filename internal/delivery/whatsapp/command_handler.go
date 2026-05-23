@@ -202,11 +202,15 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 func (h *CommandHandler) callUsecase(phone, label string, fn func() (string, error)) (string, error) {
 	resp, err := fn()
 	if err != nil {
-		log.Printf("[ERROR] %s failed: %v", label, err)
+		log.Printf("[ERROR] %s failed for %s: %v", label, phone, err)
 		return "❌ Terjadi kesalahan saat " + errorLabel(label) + ". Coba lagi nanti.", nil
 	}
 	return resp, nil
 }
+
+const (
+	ErrMsgSaveSchedule = "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti."
+)
 
 var errorLabels = map[string]string{
 	"RegisterUser":   "mendaftar",
@@ -248,7 +252,7 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, er
 	resp, err := h.usecase.SetFastingType(phone, typeID, startTime, durationHours)
 	if err != nil {
 		log.Printf("[ERROR] SetFastingType failed: %v", err)
-		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
+		return ErrMsgSaveSchedule, nil
 	}
 	return resp, nil
 }
@@ -281,7 +285,7 @@ func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, e
 	resp, err := h.usecase.ScheduleFastingType(phone, typeID, args[1], args[2], durationHours)
 	if err != nil {
 		log.Printf("[ERROR] ScheduleFastingType failed: %v", err)
-		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
+		return ErrMsgSaveSchedule, nil
 	}
 	return resp, nil
 }
@@ -300,7 +304,7 @@ func (h *CommandHandler) handleJadwalBebas(phone string, args []string) (string,
 	resp, err := h.usecase.ScheduleFreestyleFasting(phone, kind, args[1], args[2], durationHours)
 	if err != nil {
 		log.Printf("[ERROR] ScheduleFreestyleFasting failed: %v", err)
-		return "❌ Terjadi kesalahan saat menyimpan jadwal. Coba lagi nanti.", nil
+		return ErrMsgSaveSchedule, nil
 	}
 	return resp, nil
 }

@@ -107,7 +107,7 @@ Saat pertama kali running, bot akan menampilkan **QR code di terminal**:
 3. Arahkan kamera HP ke QR code di terminal
 4. Tunggu hingga muncul "✅ Login successful!"
 
-Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kali run. Untuk production, arahkan `DATABASE_PATH` dan `SESSION_PATH` ke folder data yang permission-nya ketat, misalnya `/opt/fasting-bot/data`.
+Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kali run. Untuk production, arahkan `DATABASE_PATH` dan `SESSION_PATH` ke file berbeda di folder data yang permission-nya ketat, misalnya `/opt/fasting-bot/data`. Jika QR perlu direset, hapus hanya `SESSION_PATH`; jangan hapus `DATABASE_PATH` karena file itu menyimpan user, jadwal, `/stats`, dan `/leaderboard`.
 
 > Security: isi `ALLOWED_GROUP_JID` supaya command grup hanya diproses dari grup yang dipercaya. Command personal seperti `/daftar`, `/set-puasa`, `/status`, `/stats`, `/buka`, dan `/hapus` akan dibalas via DM agar nomor dan jadwal tidak terbuka di grup.
 
@@ -260,13 +260,36 @@ Contoh: Menambah fitur riwayat fasting
 # Hapus database (semua data user & jadwal terhapus!)
 rm /opt/fasting-bot/data/fasting-bot.db
 
-# Hapus session (perlu scan QR ulang)
-rm /opt/fasting-bot/data/whatsapp-session.db
+# Reset session/QR saja (progress tetap aman)
+sudo /opt/fasting-bot/monitor.sh reset-session
 ```
+
+Untuk production, jangan reset QR dengan menghapus seluruh folder `/opt/fasting-bot/data`. Struktur aman:
+
+```text
+/opt/fasting-bot/data/
+  fasting-bot.db          # data permanen: users, schedules, stats, leaderboard
+  whatsapp-session.db     # session WhatsApp, boleh dihapus untuk scan QR ulang
+  backups/                # backup fasting-bot.db
+```
+
+Backup harian bisa dijalankan dengan:
+
+```bash
+sudo /opt/fasting-bot/monitor.sh backup
+```
+
+Restore dari backup terbaru:
+
+```bash
+sudo /opt/fasting-bot/monitor.sh restore
+```
+
+Untuk skala kecil, backup lokal di folder `backups/` cukup dulu untuk mencegah progress hilang saat reset QR atau salah hapus DB. Sync ke S3/R2/Google Drive/rsync bisa ditambahkan nanti jika datanya sudah makin penting atau user bertambah.
 
 ## Catatan Penting
 
 - Bot menggunakan **unofficial WhatsApp Web API** (whatsmeow)
 - Jangan gunakan untuk spam atau bulk messaging
 - Ideal untuk grup kecil (< 50 orang)
-- Untuk production, pertimbangkan backup database secara rutin
+- Untuk production skala kecil, jalankan backup `fasting-bot.db` rutin ke folder lokal `backups/`; sinkronisasi ke storage di luar VPS bisa ditambahkan nanti

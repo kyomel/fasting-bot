@@ -25,7 +25,7 @@ jobs:
           host: ${{ secrets.VPS_IP }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "fasting-bot,deploy/fasting-bot.service"
+          source: "fasting-bot,deploy/fasting-bot.service,deploy/monitor.sh"
           target: "/tmp/deploy/"
 
       - name: Deploy and restart
@@ -37,9 +37,10 @@ jobs:
           script: |
             set -e
             sudo mv /tmp/deploy/fasting-bot /opt/fasting-bot/fasting-bot
+            sudo mv /tmp/deploy/deploy/monitor.sh /opt/fasting-bot/monitor.sh
             sudo mv /tmp/deploy/deploy/fasting-bot.service /etc/systemd/system/fasting-bot.service
             sudo chown -R fastingbot:fastingbot /opt/fasting-bot
-            sudo chmod +x /opt/fasting-bot/fasting-bot
+            sudo chmod +x /opt/fasting-bot/fasting-bot /opt/fasting-bot/monitor.sh
             sudo systemctl daemon-reload
             sudo systemctl enable --now fasting-bot
             sleep 3

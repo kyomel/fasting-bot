@@ -19,8 +19,9 @@ GitHub Actions
 VPS DomaiNesia (Ubuntu 22.04)
     ├── fasting-bot binary
     ├── systemd service (auto-restart)
-    ├── SQLite databases
-    └── WhatsApp session
+    ├── SQLite app database (users, stats, leaderboard)
+    ├── WhatsApp session database
+    └── backup/restore helper
 ```
 
 ## 📋 Prerequisites
@@ -126,6 +127,7 @@ File yang dideploy otomatis:
 | `fasting-bot-linux` | `/opt/fasting-bot/fasting-bot` | Binary utama |
 | `.env.example` | `/opt/fasting-bot/.env.example` | Template config |
 | `deploy/fasting-bot.service` | `/etc/systemd/system/fasting-bot.service` | Systemd config |
+| `deploy/monitor.sh` | `/opt/fasting-bot/monitor.sh` | Healthcheck, backup, restore, reset session |
 
 ## 🔧 Monitoring & Maintenance
 
@@ -142,16 +144,66 @@ sudo journalctl -u fasting-bot -f
 ```bash
 # Bot auto-heal jika crash
 crontab -l
-# → */5 * * * * /opt/fasting-bot/healthcheck.sh
+# → */5 * * * * /opt/fasting-bot/monitor.sh healthcheck
 ```
 
-### Backup Harian (jam 3 pagi)
+### Backup App DB Harian (jam 3 pagi)
 
 ```bash
-# Backup database otomatis
+# Backup user, stats, jadwal aktif, dan leaderboard otomatis
 crontab -l
-# → 0 3 * * * /opt/fasting-bot/backup.sh
+# → 0 3 * * * /opt/fasting-bot/monitor.sh backup
 ```
+
+Backup memakai SQLite Online Backup API lewat `sqlite3 .backup`, jadi tidak perlu menghentikan bot. File yang dibuat:
+
+```bash
+/opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.db
+/opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.sql.gz
+```
+
+Yang dibackup hanya `DATABASE_PATH` (`fasting-bot.db`), karena berisi data permanen:
+
+- `users`
+- `fasting_schedules`
+- `fasting_records`
+- `user_fasting_stats` untuk `/stats` dan `/leaderboard`
+- `notification_logs`
+
+`SESSION_PATH` (`whatsapp-session.db`) sengaja tidak dibackup rutin. Session WhatsApp boleh dihapus untuk scan QR ulang, sedangkan data puasa tidak boleh ikut terhapus.
+
+Untuk skala kecil, backup lokal di `/opt/fasting-bot/data/backups` sudah cukup sebagai proteksi dari salah hapus DB saat reset QR atau deploy. Nanti jika user dan data sudah makin banyak, baru pertimbangkan sync folder backup ini ke storage lain seperti S3/R2/Google Drive atau server kedua.
+
+### Restore Jika Database Hilang
+
+```bash
+# Restore dari backup terbaru
+sudo /opt/fasting-bot/monitor.sh restore
+
+# Atau restore dari file tertentu
+sudo /opt/fasting-bot/monitor.sh restore /opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.db
+sudo /opt/fasting-bot/monitor.sh restore /opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.sql.gz
+```
+
+Restore akan menghentikan service, menyimpan salinan DB lama sebagai `pre-restore-*.db`, menghapus `fasting-bot.db-wal`/`fasting-bot.db-shm`, lalu menyalakan service lagi.
+
+### Reset QR / Session WhatsApp yang Aman
+
+Jika hanya ingin scan QR ulang, jangan hapus folder data dan jangan hapus `fasting-bot.db`.
+
+```bash
+sudo /opt/fasting-bot/monitor.sh reset-session
+```
+
+Command ini hanya menghapus:
+
+```bash
+/opt/fasting-bot/data/whatsapp-session.db
+/opt/fasting-bot/data/whatsapp-session.db-wal
+/opt/fasting-bot/data/whatsapp-session.db-shm
+```
+
+Progress user, `/stats`, dan `/leaderboard` tetap aman di `fasting-bot.db`.
 
 ## 🛠️ Troubleshooting
 
