@@ -109,7 +109,7 @@ Saat pertama kali running, bot akan menampilkan **QR code di terminal**:
 
 Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kali run. Untuk production, arahkan `DATABASE_PATH` dan `SESSION_PATH` ke file berbeda di folder data yang permission-nya ketat, misalnya `/opt/fasting-bot/data`. Jika QR perlu direset, hapus hanya `SESSION_PATH`; jangan hapus `DATABASE_PATH` karena file itu menyimpan user, jadwal, `/stats`, dan `/leaderboard`.
 
-> Security: isi `ALLOWED_GROUP_JID` supaya command grup hanya diproses dari grup yang dipercaya. Command personal seperti `/daftar`, `/set-puasa`, `/status`, `/stats`, `/buka`, dan `/hapus` akan dibalas via DM agar nomor dan jadwal tidak terbuka di grup.
+> Security: isi `ALLOWED_GROUP_JID` supaya command grup hanya diproses dari grup yang dipercaya. Balasan command di grup akan dikirim ke grup agar semua member bisa melihat.
 
 ### 4. Testing
 

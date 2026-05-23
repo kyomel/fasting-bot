@@ -78,7 +78,7 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 	}
 
 	replyTo := chat
-	if !isGroup || isPrivateCommand(commandName(text)) {
+	if !isGroup {
 		replyTo = sender
 	}
 
@@ -137,23 +137,6 @@ func normalizePhone(phone string) string {
 		return ""
 	}
 	return "+" + normalized
-}
-
-func commandName(text string) string {
-	parts := strings.Fields(strings.TrimSpace(text))
-	if len(parts) == 0 {
-		return ""
-	}
-	return strings.ToLower(parts[0])
-}
-
-func isPrivateCommand(command string) bool {
-	switch command {
-	case "/daftar", "/register", "/setname", "/set-puasa", "/jadwalkan", "/jadwal-bebas", "/status", "/buka", "/cancel", "/hapus", "/stats":
-		return true
-	default:
-		return false
-	}
 }
 
 func (h *CommandHandler) processCommand(phone, jid, text string) (string, error) {
