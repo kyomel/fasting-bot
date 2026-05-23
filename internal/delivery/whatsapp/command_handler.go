@@ -63,7 +63,7 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 	log.Printf("📩 Message from %s in %s (Group: %v): %s", sender.User, chat.String(), isGroup, text)
 
 	phone := "+" + sender.User
-	if !isAuthorized(phone, chat.String(), isGroup) {
+	if !isAuthorized(chat.String(), isGroup) {
 		log.Printf("🚫 Blocked: sender=%s chat=%s group=%v (allowed group=%s)", phone, chat.String(), isGroup, config.AllowedGroupJID)
 		return
 	}
@@ -77,37 +77,18 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 		return
 	}
 
-	replyTo := chat
-	if !isGroup {
-		replyTo = sender
-	}
-
-	_, sendErr := h.client.SendMessage(context.Background(), replyTo, &waProto.Message{
+	_, sendErr := h.client.SendMessage(context.Background(), chat, &waProto.Message{
 		Conversation: proto.String(response),
 	})
 	if sendErr != nil {
-		log.Printf("[ERROR] SendMessage to %s (%d chars): %v", replyTo.String(), len(response), sendErr)
+		log.Printf("[ERROR] SendMessage to %s (%d chars): %v", chat.String(), len(response), sendErr)
 	} else {
-		log.Printf("📤 Sent to %s (%d chars)", replyTo.String(), len(response))
+		log.Printf("📤 Sent to %s (%d chars)", chat.String(), len(response))
 	}
 }
 
-func isAuthorized(phone, chatJID string, isGroup bool) bool {
-	if isAdminPhone(phone) {
-		if !isGroup {
-			return true
-		}
-		return config.AllowedGroupJID != "" && chatJID == config.AllowedGroupJID
-	}
-
-	if isGroup {
-		return config.AllowedGroupJID != "" && chatJID == config.AllowedGroupJID
-	}
-	return false
-}
-
-func isAdminPhone(phone string) bool {
-	return normalizePhone(phone) == normalizePhone(config.AdminNumber)
+func isAuthorized(chatJID string, isGroup bool) bool {
+	return isGroup && config.AllowedGroupJID != "" && chatJID == config.AllowedGroupJID
 }
 
 func normalizePhone(phone string) string {
