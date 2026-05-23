@@ -60,8 +60,11 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 		return
 	}
 
+	log.Printf("📩 Message from %s in %s (Group: %v): %s", sender.User, chat.String(), isGroup, text)
+
 	phone := "+" + sender.User
 	if !isAuthorized(phone, chat.String(), isGroup) {
+		log.Printf("🚫 Blocked: sender=%s chat=%s group=%v (allowed group=%s)", phone, chat.String(), isGroup, config.AllowedGroupJID)
 		return
 	}
 
