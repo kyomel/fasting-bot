@@ -96,7 +96,7 @@ func isAuthorized(phone, chatJID string, isGroup bool) bool {
 	if isGroup {
 		return config.AllowedGroupJID != "" && chatJID == config.AllowedGroupJID
 	}
-	return phone == normalizePhone(config.AdminNumber)
+	return normalizePhone(phone) == normalizePhone(config.AdminNumber)
 }
 
 func normalizePhone(phone string) string {
@@ -104,10 +104,28 @@ func normalizePhone(phone string) string {
 	if phone == "" {
 		return ""
 	}
-	if strings.HasPrefix(phone, "+") {
-		return phone
+	if at := strings.IndexByte(phone, '@'); at >= 0 {
+		phone = phone[:at]
 	}
-	return "+" + phone
+	if colon := strings.IndexByte(phone, ':'); colon >= 0 {
+		phone = phone[:colon]
+	}
+
+	var digits strings.Builder
+	for _, r := range phone {
+		if r >= '0' && r <= '9' {
+			digits.WriteRune(r)
+		}
+	}
+
+	normalized := digits.String()
+	if strings.HasPrefix(normalized, "0") {
+		normalized = "62" + strings.TrimLeft(normalized, "0")
+	}
+	if normalized == "" {
+		return ""
+	}
+	return "+" + normalized
 }
 
 func commandName(text string) string {
