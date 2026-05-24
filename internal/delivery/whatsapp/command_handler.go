@@ -78,7 +78,9 @@ func (h *CommandHandler) handleMessage(msg *events.Message) {
 	}
 
 	_, sendErr := h.client.SendMessage(context.Background(), chat, &waProto.Message{
-		Conversation: proto.String(response),
+		ExtendedTextMessage: &waProto.ExtendedTextMessage{
+			Text: proto.String(response),
+		},
 	})
 	if sendErr != nil {
 		log.Printf("[ERROR] SendMessage to %s (%d chars): %v", chat.String(), len(response), sendErr)
