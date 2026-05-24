@@ -34,7 +34,6 @@ type FastingUsecase interface {
 	GetLeaderboard() (string, error)
 	SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error)
 	ScheduleFastingType(phone string, typeID int, dateInput, startTime string, durationHours int) (string, error)
-	ScheduleFreestyleFasting(phone, kind, dateInput, startTime string, durationHours int) (string, error)
 }
 
 type fastingUsecase struct {
@@ -297,12 +296,11 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 		return "", fmt.Errorf("gagal membatalkan: %w", err)
 	}
 
-	streakNote := "Streak puasa diperbarui karena kamu sudah melewati jam puasa yang ditentukan."
-	if !streakQualified {
-		streakNote = fmt.Sprintf("Streak belum bertambah karena buka sebelum jadwal selesai (%s).", formatDisplayTime(plannedEndTime))
+	if streakQualified {
+		return fmt.Sprintf("🎊 *Selesai — keren banget!*\nJenis: *%s*\n⏱ Mulai: %s\n🏁 Jadwal selesai: %s\n🍽 Buka: %s\n⌛ Total puasa: *%s*\n\n🔥 Streak kamu bertambah! Konsistensi kayak gini yang bikin perubahan nyata.\nCek perkembangan di /stats atau /leaderboard 🏆", displayFastingTypeName(schedule.FastingTypeName), formatDisplayTime(startTime), formatDisplayTime(plannedEndTime), formatDisplayTime(openedAt), formatDurationWithDays(durationMinutes)), nil
 	}
 
-	return fmt.Sprintf("✅ Fasting dibuka. Selamat berbuka! 🎉\nJenis Puasa: %s\nMulai: %s\nJadwal selesai: %s\nBuka: %s\nTotal waktu puasa: %s\n\nHasil ini sudah masuk ke /stats.\n%s", displayFastingTypeName(schedule.FastingTypeName), formatDisplayTime(startTime), formatDisplayTime(plannedEndTime), formatDisplayTime(openedAt), formatDurationWithDays(durationMinutes), streakNote), nil
+	return fmt.Sprintf("✅ *Buka puasa tercatat!*\nJenis: *%s*\n⏱ Mulai: %s\n🏁 Jadwal selesai: %s\n🍽 Buka: %s\n⌛ Durasi aktual: *%s*\n\nKamu buka sebelum jadwal selesai, jadi streak belum naik kali ini — tapi durasi tetap masuk ke /stats. 🤍\nNggak ada yang sempurna; yang penting nggak berhenti. Coba lagi besok ya! 🌱", displayFastingTypeName(schedule.FastingTypeName), formatDisplayTime(startTime), formatDisplayTime(plannedEndTime), formatDisplayTime(openedAt), formatDurationWithDays(durationMinutes)), nil
 }
 
 func (u *fastingUsecase) DeleteSchedule(phone string) (string, error) {
@@ -430,7 +428,7 @@ func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, start
 		u.markElapsedNotifications(user.ID, startDateTime, endDateTime)
 	}
 
-	return fmt.Sprintf("✅ *Jadwal %s Tersimpan!*\nMulai: %s\nSelesai: %s\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime)), nil
+	return fmt.Sprintf("🎯 *Jadwal %s tersimpan!*\n⏱ Mulai: *%s*\n🏁 Buka: *%s*\n\nBot akan kirim notifikasi otomatis pas mulai & pas selesai.\nNiat udah dikunci — tinggal jalanin. Yuk! 🚀💪", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime)), nil
 }
 
 func fastingTypeScheduleDetails(typeID int, durationHours int) (int, string, string) {
@@ -462,45 +460,6 @@ func fastingTypeScheduleDetails(typeID int, durationHours int) (int, string, str
 	return 0, "", "❌ Jenis puasa tidak ditemukan. Kirim /list-puasa untuk melihat daftar."
 }
 
-func (u *fastingUsecase) ScheduleFreestyleFasting(phone, kind, dateInput, startTime string, durationHours int) (string, error) {
-	fastingTypeName, err := freestyleFastingTypeName(kind)
-	if err != nil {
-		return "❌ Jenis puasa freestyle hanya WF atau DF.\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
-	}
-	if durationHours < 1 {
-		return "❌ Durasi puasa harus minimal 1 jam.", nil
-	}
-
-	startDateTime, err := time.ParseInLocation(inputDateLayout+" "+clockLayout, dateInput+" "+startTime, config.Location)
-	if err != nil {
-		return "❌ Format jadwal salah. Gunakan: /jadwal-bebas WF DD-MM-YYYY HH:MM durasi_jam\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
-	}
-	endDateTime := calculateEndDateTime(startDateTime, durationHours)
-
-	user, err := u.userRepo.FindByPhone(phone)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return msgNotRegistered, nil
-		}
-		return "", fmt.Errorf(errCheckDataFormat, err)
-	}
-
-	u.scheduleRepo.DeactivateByUserID(user.ID)
-
-	schedule := &domain.FastingSchedule{
-		UserID:          user.ID,
-		FastStart:       formatStoredTime(startDateTime),
-		FastEnd:         formatStoredTime(endDateTime),
-		FastingTypeName: fastingTypeName,
-	}
-	if err := u.scheduleRepo.Create(schedule); err != nil {
-		return "", fmt.Errorf(errSaveScheduleFormat, err)
-	}
-	u.markElapsedNotifications(user.ID, startDateTime, endDateTime)
-
-	return fmt.Sprintf("✅ *Jadwal %s Freestyle Tersimpan!*\nMulai: %s\nSelesai: %s\nDurasi: %d jam\n\nKamu akan menerima notifikasi otomatis.", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime), durationHours), nil
-}
-
 func (u *fastingUsecase) markElapsedNotifications(userID int64, startDateTime, endDateTime time.Time) {
 	now := time.Now().In(config.Location).Truncate(time.Minute)
 	if !startDateTime.After(now) {
@@ -508,17 +467,6 @@ func (u *fastingUsecase) markElapsedNotifications(userID int64, startDateTime, e
 	}
 	if !endDateTime.After(now) {
 		_ = u.notificationRepo.LogNotification(userID, "end")
-	}
-}
-
-func freestyleFastingTypeName(kind string) (string, error) {
-	switch kind {
-	case "WF":
-		return "Water Fasting (WF)", nil
-	case "DF":
-		return "Dry Fasting (DF)", nil
-	default:
-		return "", fmt.Errorf("jenis puasa freestyle tidak valid")
 	}
 }
 

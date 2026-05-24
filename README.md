@@ -7,7 +7,8 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 - ⏰ Notifikasi otomatis saat fasting mulai dan berakhir
 - 📱 Bisa digunakan di grup
 - 🗄️ Database SQLite (ringan, tanpa server)
-- 📋 Command sederhana: /daftar, /list-puasa, /set-puasa, /jadwalkan, /jadwal-bebas, /status, /buka, /hapus
+- 📋 4 perintah utama: `/set-puasa`, `/jadwalkan`, `/buka`, `/buka <tanggal> <jam>`
+- 📋 Pendukung: `/daftar`, `/list-puasa`, `/status`, `/batalkan`, `/stats`, `/leaderboard`
 
 ## Struktur Project (Clean Architecture)
 
@@ -121,7 +122,7 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 /list-puasa
 /set-puasa 3 05:00
 /status
-/hapus
+/batalkan
 ```
 
 **Test /list-puasa dan /set-puasa:**
@@ -129,7 +130,7 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 /list-puasa
 /set-puasa 3 05:00
 /status
-/hapus
+/batalkan
 ```
 
 **Test notifikasi otomatis:**
@@ -145,13 +146,13 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 | `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
 | `/jadwalkan <nomor> <tanggal> <jam> [durasi]` | Seperti `/set-puasa`, tetapi memakai tanggal eksplisit. Boleh memakai waktu lampau untuk restore progres yang ter-reset. Tidak memakai kode WF/DF | `/jadwalkan 3 23-05-2026 16:00` |
-| `/jadwal-bebas <WF\|DF> <tanggal> <jam> <durasi>` | Khusus Water/Dry Fasting freestyle dengan kode WF/DF | `/jadwal-bebas WF 23-05-2026 16:00 12` |
 | `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan | `/status` |
-| `/buka [tanggal jam]` | Buka puasa / batalkan fasting. Pakai tanggal dan jam jika lupa mencatat waktu berbuka | `/buka 23-05-2026 18:30` |
-| `/hapus` | Hapus jadwal puasa aktif. Setelah dihapus, `/status` akan menampilkan belum ada jadwal fasting | `/hapus` |
+| `/buka` | Buka puasa / batalkan fasting **sekarang** | `/buka` |
+| `/buka <tanggal> <jam>` | Catat buka puasa di waktu yang sudah lewat (kalau lupa kirim `/buka`) | `/buka 23-05-2026 18:30` |
+| `/batalkan` | Batalkan jadwal puasa aktif. Setelah dibatalkan, `/status` akan menampilkan belum ada jadwal fasting | `/batalkan` |
 | `/stats` | Lihat statistik hasil buka puasa pribadi | `/stats` |
 | `/leaderboard` | Lihat klasemen puasa berdasarkan total waktu puasa | `/leaderboard` |
-| `/help` | Tampilkan bantuan | `/help` |
+| `/bantuan` | Tampilkan bantuan | `/bantuan` |
 | `/info` | Info bot | `/info` |
 
 ## Jenis-Jenis Puasa
@@ -186,27 +187,24 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
    - Contoh: `/jadwalkan 8 23-05-2026 16:00 48` → Water Fasting 48 jam dari 23-05-2026 16:00 sampai 25-05-2026 16:00
    - `/jadwalkan` selalu memakai nomor seperti `/set-puasa`. Jangan pakai `WF`/`DF` di command ini; Water Fasting pakai nomor 8, Dry Fasting pakai nomor 9.
    - `/jadwalkan` boleh memakai tanggal/jam yang sudah lewat untuk memulihkan progres setelah data aktif ter-reset. Jika mulai sudah lewat, notifikasi mulai tidak dikirim ulang.
-5. Jadwalkan WF/DF freestyle dengan tanggal dan durasi bebas: `/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>`
-   - Contoh: `/jadwal-bebas WF 23-05-2026 16:00 12` → Water Fasting 12 jam dari 23-05-2026 16:00 sampai 24-05-2026 04:00
-   - Contoh: `/jadwal-bebas DF 23-05-2026 20:00 10` → Dry Fasting 10 jam dari 23-05-2026 20:00 sampai 24-05-2026 06:00
-6. Cek status jadwal: `/status`
+5. Cek status jadwal: `/status`
    - Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan jika sedang berjalan akan menampilkan sudah berjalan berapa lama.
-7. Buka puasa: `/buka`
+6. Buka puasa: `/buka` atau `/buka <tanggal> <jam>`
+   - `/buka` (tanpa argumen) → catat buka puasa sekarang.
+   - `/buka DD-MM-YYYY HH:MM` → catat jam berbuka yang sebenarnya kalau lupa kirim `/buka` tepat waktu.
    - Jika puasa sudah mulai, bot mencatat total waktu puasa ke `/stats` dalam format hari, jam, dan menit.
    - Jika `/buka` dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
-   - Jika lupa mengirim `/buka`, pakai `/buka DD-MM-YYYY HH:MM` untuk mencatat jam berbuka yang sebenarnya.
    - Contoh: `/buka 23-05-2026 18:30`
-8. Cek statistik dan klasemen: `/stats` atau `/leaderboard`
+7. Cek statistik dan klasemen: `/stats` atau `/leaderboard`
    - `/leaderboard` diurutkan berdasarkan total waktu puasa terbesar.
-9. Hapus jadwal aktif jika ingin mengosongkan status: `/hapus`
-   - Setelah `/hapus`, `/status` akan kembali menampilkan belum ada jadwal fasting.
+8. Batalkan jadwal aktif jika ingin mengosongkan status: `/batalkan`
+   - Setelah `/batalkan`, `/status` akan kembali menampilkan belum ada jadwal fasting.
 
 Catatan waktu:
 - Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
-- Format tanggal untuk `/jadwal-bebas` adalah `DD-MM-YYYY`.
 - Format tanggal untuk `/buka` manual adalah `DD-MM-YYYY HH:MM`.
-- `/jadwalkan` mengikuti format nomor `/set-puasa`: nomor 1-7 tanpa durasi, nomor 8-10 wajib durasi. Kode `WF`/`DF` hanya untuk `/jadwal-bebas`.
-- `/jadwalkan` dan `/jadwal-bebas` boleh memakai tanggal/jam mulai yang sudah lewat untuk restore progres. Setelah itu gunakan `/buka` saat benar-benar berbuka supaya durasi masuk ke `/stats`.
+- `/jadwalkan` mengikuti format nomor `/set-puasa`: nomor 1-7 tanpa durasi, nomor 8-10 wajib durasi. Kode `WF`/`DF` tidak dipakai — gunakan nomor 8 untuk Water Fasting dan nomor 9 untuk Dry Fasting.
+- `/jadwalkan` boleh memakai tanggal/jam mulai yang sudah lewat untuk restore progres. Setelah itu gunakan `/buka` saat benar-benar berbuka supaya durasi masuk ke `/stats`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
 - Streak puasa bertambah 1 setiap `/buka` yang dilakukan pada atau setelah jam selesai puasa yang ditentukan. Jika `/buka` dilakukan sebelum jadwal selesai, total durasi tetap masuk `/stats`, tetapi streak tidak bertambah.
 - Jika lewat 24 jam dari `/buka` terakhir yang memenuhi jadwal dan tidak ada puasa aktif yang sedang berjalan, streak saat ini otomatis kembali ke 0 saat `/stats` atau `/leaderboard` dibuka.

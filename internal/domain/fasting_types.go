@@ -31,27 +31,50 @@ func GetFastingTypeByID(id int) (*FastingType, error) {
 	return nil, fmt.Errorf("jenis puasa tidak ditemukan")
 }
 
+var numberEmojis = map[int]string{
+	1:  "1️⃣",
+	2:  "2️⃣",
+	3:  "3️⃣",
+	4:  "4️⃣",
+	5:  "5️⃣",
+	6:  "6️⃣",
+	7:  "7️⃣",
+	8:  "8️⃣",
+	9:  "9️⃣",
+	10: "🔟",
+}
+
 func GetFastingTypesList() string {
 	result := "📋 *Daftar Jenis Puasa*\n\n"
 	for _, ft := range FastingTypes {
-		if ft.ID <= 7 {
-			result += fmt.Sprintf("*%d. %s*\n   %s\n\n", ft.ID, ft.Name, ft.Description)
-		} else if ft.ID == 8 {
-			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Pilih: 24, 36, 48, atau 72 jam_\n\n", ft.ID, ft.Name, ft.Description)
-		} else if ft.ID == 9 {
-			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Tentukan durasi sendiri_\n\n", ft.ID, ft.Name, ft.Description)
-		} else {
-			result += fmt.Sprintf("*%d. %s*\n   %s\n   _Tentukan durasi sendiri (minimal 24 jam)_\n\n", ft.ID, ft.Name, ft.Description)
+		emoji := numberEmojis[ft.ID]
+		switch {
+		case ft.ID <= 7:
+			result += fmt.Sprintf("%s *%s*\n   %s\n\n", emoji, ft.Name, ft.Description)
+		case ft.ID == 8:
+			result += fmt.Sprintf("%s *%s*\n   %s\n   _Pilih: 24, 36, 48, atau 72 jam_\n\n", emoji, ft.Name, ft.Description)
+		case ft.ID == 9:
+			result += fmt.Sprintf("%s *%s*\n   %s\n   _Tentukan durasi sendiri_\n\n", emoji, ft.Name, ft.Description)
+		default:
+			result += fmt.Sprintf("%s *%s*\n   %s\n   _Tentukan durasi sendiri (minimal 24 jam)_\n\n", emoji, ft.Name, ft.Description)
 		}
 	}
-	result += "*Cara pakai singkat:*\n"
-	result += "• `/set-puasa` untuk mulai sekarang/ke depan tanpa tanggal.\n"
-	result += "  IF/OMAD: `/set-puasa <nomor> <jam_mulai>` contoh `/set-puasa 3 05:00`\n"
-	result += "  Water/Dry/Prolonged: `/set-puasa <nomor> <jam_mulai> <durasi_jam>` contoh `/set-puasa 8 05:00 48`\n\n"
-	result += "• `/jadwalkan` untuk tanggal tertentu atau rollback ke masa lalu, formatnya tetap pakai nomor seperti `/set-puasa`.\n"
-	result += "  IF/OMAD: `/jadwalkan <nomor> <tanggal> <jam_mulai>` contoh `/jadwalkan 3 23-05-2026 16:00`\n"
-	result += "  Water/Dry/Prolonged: `/jadwalkan <nomor> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwalkan 8 23-05-2026 16:00 48`\n"
-	result += "  Catatan: jangan pakai WF/DF di `/jadwalkan`; gunakan nomor 8/9 dari daftar.\n\n"
-	result += "• `/jadwal-bebas` khusus freestyle WF/DF: `/jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>` contoh `/jadwal-bebas WF 23-05-2026 16:00 12`"
+	result += "━━━━━━━━━━━━━━━\n"
+	result += "💡 *Cara Pakai*\n\n"
+	result += "▶️ *Mulai sekarang* — pakai `/set-puasa`\n"
+	result += "   • IF/OMAD (1-7):\n"
+	result += "     `/set-puasa <nomor> <jam_mulai>`\n"
+	result += "     contoh: `/set-puasa 3 05:00`\n"
+	result += "   • Water/Dry/Prolonged (8-10):\n"
+	result += "     `/set-puasa <nomor> <jam_mulai> <durasi_jam>`\n"
+	result += "     contoh: `/set-puasa 8 05:00 48`\n\n"
+	result += "📅 *Jadwalkan ke tanggal tertentu* — pakai `/jadwalkan`\n"
+	result += "   • IF/OMAD (1-7):\n"
+	result += "     `/jadwalkan <nomor> <tanggal> <jam_mulai>`\n"
+	result += "     contoh: `/jadwalkan 3 23-05-2026 16:00`\n"
+	result += "   • Water/Dry/Prolonged (8-10):\n"
+	result += "     `/jadwalkan <nomor> <tanggal> <jam_mulai> <durasi_jam>`\n"
+	result += "     contoh: `/jadwalkan 8 23-05-2026 16:00 48`\n\n"
+	result += "ℹ️ Catatan: gunakan nomor 8️⃣ untuk Water Fasting, 9️⃣ untuk Dry Fasting (bukan kode WF/DF)."
 	return result
 }

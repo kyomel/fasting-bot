@@ -59,7 +59,7 @@ func (s *Scheduler) checkAndNotify() {
 	}
 
 	for _, t := range targets {
-		msg := fmt.Sprintf("⏰ *Waktu Puasa Dimulai!*\nHalo %s, puasa kamu sudah dimulai.\nSelesai: %s\n\nSemangat ya! 💪", t.Name, formatScheduleForMessage(t.FastEnd))
+		msg := fmt.Sprintf("⏰ *Yuk mulai, %s!*\nPuasa kamu resmi dimulai sekarang.\n🏁 Target buka: *%s*\n\nWaktu yang paling berat biasanya jam pertama — tapi kamu udah buktiin bisa lewatin itu berkali-kali. 🔥\nAir putih boleh, nafas dalam boleh, istirahat boleh. Sisanya tahan ya! Semangat! 💪", t.Name, formatScheduleForMessage(t.FastEnd))
 		if err := s.notifier.Send(t.JID, msg); err != nil {
 			fmt.Printf("❌ Failed to send start notification: %v\n", err)
 			continue
@@ -77,8 +77,19 @@ func (s *Scheduler) checkAndNotify() {
 		return
 	}
 
+	todayDate := now.Format("02-01-2006")
 	for _, t := range targets {
-		msg := fmt.Sprintf("✅ *Waktu Puasa Berakhir!*\nHalo %s, jadwal puasa kamu sudah sampai waktu selesai.\nMulai: %s\nSelesai: %s\n\nIni hanya pengingat jam puasa berakhir. Jika kamu sudah benar-benar berbuka, kirim /buka supaya durasinya masuk ke /stats.", t.Name, formatScheduleForMessage(t.FastStart), formatScheduleForMessage(t.FastEnd))
+		msg := fmt.Sprintf(
+			"🎉 *Mantap, %s — kamu berhasil!*\nKamu udah tahan dari *%s* sampai *%s* — luar biasa! 💪\n\n"+
+				"Sekarang catat buka puasa kamu biar masuk ke /stats & streak:\n"+
+				"• Kirim */buka* → kalau kamu berbuka *sekarang*\n"+
+				"• Kirim */buka %s HH:MM* → kalau udah buka tadi (contoh: */buka %s 18:30*)\n\n"+
+				"_Tanpa /buka, durasi puasa kamu nggak ke-record lho!_ ⚠️\nKeep going — istirahat cukup, besok lanjut lagi 🌿",
+			t.Name,
+			formatScheduleForMessage(t.FastStart),
+			formatScheduleForMessage(t.FastEnd),
+			todayDate, todayDate,
+		)
 		if err := s.notifier.Send(t.JID, msg); err != nil {
 			fmt.Printf("❌ Failed to send end notification: %v\n", err)
 			continue

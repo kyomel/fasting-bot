@@ -132,7 +132,7 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 	args := parts[1:]
 
 	switch command {
-	case "/daftar", "/register":
+	case "/daftar":
 		name := strings.Join(args, " ")
 		return h.callUsecase(phone, "RegisterUser", func() (string, error) {
 			return h.usecase.RegisterUser(phone, jid, name)
@@ -153,15 +153,12 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 	case "/jadwalkan":
 		return h.handleJadwalkan(phone, args)
 
-	case "/jadwal-bebas":
-		return h.handleJadwalBebas(phone, args)
-
 	case "/status":
 		return h.callUsecase(phone, "GetStatus", func() (string, error) {
 			return h.usecase.GetStatus(phone)
 		})
 
-	case "/buka", "/cancel":
+	case "/buka":
 		if len(args) > 0 {
 			return h.handleBuka(phone, args)
 		}
@@ -169,10 +166,21 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 			return h.usecase.CancelToday(phone)
 		})
 
-	case "/hapus":
+	case "/batalkan":
 		return h.callUsecase(phone, "DeleteSchedule", func() (string, error) {
 			return h.usecase.DeleteSchedule(phone)
 		})
+
+	case "/hapus":
+		// Deprecated alias — /hapus diganti jadi /batalkan. Tetap dijalankan supaya user yang sudah terbiasa
+		// tidak kehilangan akses; tampilkan hint agar pindah ke nama baru.
+		resp, err := h.callUsecase(phone, "DeleteSchedule", func() (string, error) {
+			return h.usecase.DeleteSchedule(phone)
+		})
+		if err != nil {
+			return resp, err
+		}
+		return "ℹ️ Catatan: */hapus* sekarang sudah berubah jadi */batalkan*. Tetap berfungsi, tapi yuk pakai */batalkan* mulai sekarang.\n\n" + resp, nil
 
 	case "/stats":
 		return h.callUsecase(phone, "GetStats", func() (string, error) {
@@ -184,8 +192,13 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 			return h.usecase.GetLeaderboard()
 		})
 
-	case "/help", "/bantuan":
+	case "/bantuan":
 		return getHelpText(), nil
+
+	case "/help":
+		// Deprecated alias — /help diganti jadi /bantuan. Tetap dijalankan supaya user yang sudah terbiasa
+		// tidak kehilangan akses; tampilkan hint agar pindah ke nama baru.
+		return "ℹ️ Catatan: */help* sekarang sudah berubah jadi */bantuan*. Tetap berfungsi, tapi yuk pakai */bantuan* mulai sekarang.\n\n" + getHelpText(), nil
 
 	case "/info":
 		return fmt.Sprintf("🤖 *Fasting Bot*\nGrup: %s\nBot: %s", config.GroupName, config.BotNumber), nil
@@ -260,7 +273,7 @@ func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, e
 	}
 
 	if strings.EqualFold(args[0], "WF") || strings.EqualFold(args[0], "DF") {
-		return "❌ /jadwalkan tidak memakai kode WF/DF.\nUntuk Water/Dry dari daftar, pakai nomor seperti /set-puasa: /jadwalkan 8 23-05-2026 16:00 48 atau /jadwalkan 9 23-05-2026 16:00 18\nUntuk freestyle WF/DF, pakai: /jadwal-bebas WF 23-05-2026 16:00 12", nil
+		return "❌ /jadwalkan harus pakai nomor 1-10, bukan WF/DF.\nWater Fasting pakai nomor 8, Dry Fasting pakai nomor 9.\nContoh: /jadwalkan 8 23-05-2026 16:00 48", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])
@@ -287,25 +300,6 @@ func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, e
 	return resp, nil
 }
 
-func (h *CommandHandler) handleJadwalBebas(phone string, args []string) (string, error) {
-	if len(args) != 4 {
-		return "❌ Format salah.\nGunakan: /jadwal-bebas <WF|DF> <tanggal> <jam_mulai> <durasi_jam>\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
-	}
-
-	kind := strings.ToUpper(args[0])
-	durationHours, err := strconv.Atoi(args[3])
-	if err != nil {
-		return "❌ Durasi jam harus angka.\nContoh: /jadwal-bebas WF 23-05-2026 16:00 12", nil
-	}
-
-	resp, err := h.usecase.ScheduleFreestyleFasting(phone, kind, args[1], args[2], durationHours)
-	if err != nil {
-		log.Printf("[ERROR] ScheduleFreestyleFasting failed: %v", err)
-		return ErrMsgSaveSchedule, nil
-	}
-	return resp, nil
-}
-
 func (h *CommandHandler) handleBuka(phone string, args []string) (string, error) {
 	if len(args) != 2 {
 		return "❌ Format salah.\nGunakan: /buka DD-MM-YYYY HH:MM\nContoh: /buka 23-05-2026 18:30", nil
@@ -317,30 +311,32 @@ func (h *CommandHandler) handleBuka(phone string, args []string) (string, error)
 }
 
 func getHelpText() string {
-	return `🤖 *Fasting Bot - Daftar Perintah*
+	return `🤖 *Fasting Bot — Teman Puasa Kamu*
 
-/daftar <nama> - Daftar sebagai user
-/setname <nama> - Ubah nama user
-/list-puasa - Lihat jenis-jenis puasa
-/set-puasa <nomor> <jam> [durasi] - Pilih jenis puasa
-/jadwalkan <nomor> <tanggal> <jam> [durasi] - Seperti /set-puasa tapi pakai tanggal, bisa rollback
-/jadwal-bebas <WF|DF> <tanggal> <jam> <durasi> - Khusus freestyle WF/DF
-/status - Cek status akun & fasting
-/buka [tanggal jam] - Buka puasa sekarang, atau pakai tanggal/jam jika lupa
-/hapus - Hapus jadwal fasting aktif
-/stats - Lihat statistik hasil buka puasa
-/leaderboard - Lihat klasemen puasa
-/help - Tampilkan bantuan ini
+✨ *4 Perintah Utama:*
+1️⃣ */set-puasa <nomor> <jam> [durasi]* — Pilih jenis puasa & mulai
+2️⃣ */jadwalkan <nomor> <tanggal> <jam> [durasi]* — Jadwalkan untuk tanggal tertentu
+3️⃣ */buka* — Catat buka puasa sekarang
+4️⃣ */buka <tanggal> <jam>* — Catat buka puasa di waktu yang lalu (kalau lupa)
 
-Contoh:
+📋 *Perintah Pendukung:*
+/daftar <nama> — Daftar sebagai user
+/setname <nama> — Ubah nama
+/list-puasa — Lihat jenis-jenis puasa
+/status — Cek status puasa kamu sekarang
+/batalkan — Batalkan jadwal puasa aktif
+/stats — Statistik puasa pribadi
+/leaderboard — Klasemen puasa grup
+/bantuan — Tampilkan bantuan ini
+/info — Info bot
+
+💡 *Contoh praktis:*
 /daftar kyomel
-/setname kyomel baru
-/set-puasa 3 05:00
-/set-puasa 8 05:00 48
+/set-puasa 3 05:00          (IF 16:8 mulai 05:00)
+/set-puasa 8 05:00 48       (Water Fasting 48 jam)
 /jadwalkan 3 23-05-2026 16:00
-/jadwal-bebas WF 23-05-2026 16:00 12
-/buka 23-05-2026 18:30
-/stats
-/leaderboard
-/hapus`
+/buka                       (buka sekarang)
+/buka 23-05-2026 18:30      (buka jam 18:30 tadi)
+
+Konsisten dikit-dikit, hasilnya luar biasa. Yuk mulai! 💪`
 }
