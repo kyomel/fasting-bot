@@ -297,10 +297,38 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 	}
 
 	if streakQualified {
-		return fmt.Sprintf("🎊 *Selesai — keren banget!*\nJenis: *%s*\n⏱ Mulai: %s\n🏁 Jadwal selesai: %s\n🍽 Buka: %s\n⌛ Total puasa: *%s*\n\n🔥 Streak kamu bertambah! Konsistensi kayak gini yang bikin perubahan nyata.\nCek perkembangan di /stats atau /leaderboard 🏆", displayFastingTypeName(schedule.FastingTypeName), formatDisplayTime(startTime), formatDisplayTime(plannedEndTime), formatDisplayTime(openedAt), formatDurationWithDays(durationMinutes)), nil
+		return fmt.Sprintf(
+			"🎊 *Selesai — keren banget!*\n"+
+				"Jenis: *%s*\n"+
+				"⏱ Mulai: %s\n"+
+				"🏁 Target: %s\n"+
+				"🍽 Buka: %s\n"+
+				"⌛ Total: *%s*\n\n"+
+				"🔥 Streak bertambah! Konsistensi seperti ini yang bikin perubahan nyata.\n"+
+				"Cek progress: /stats atau /leaderboard 🏆",
+			displayFastingTypeName(schedule.FastingTypeName),
+			formatDisplayTime(startTime),
+			formatDisplayTime(plannedEndTime),
+			formatDisplayTime(openedAt),
+			formatDurationWithDays(durationMinutes),
+		), nil
 	}
 
-	return fmt.Sprintf("✅ *Buka puasa tercatat!*\nJenis: *%s*\n⏱ Mulai: %s\n🏁 Jadwal selesai: %s\n🍽 Buka: %s\n⌛ Durasi aktual: *%s*\n\nKamu buka sebelum jadwal selesai, jadi streak belum naik kali ini — tapi durasi tetap masuk ke /stats. 🤍\nNggak ada yang sempurna; yang penting nggak berhenti. Coba lagi besok ya! 🌱", displayFastingTypeName(schedule.FastingTypeName), formatDisplayTime(startTime), formatDisplayTime(plannedEndTime), formatDisplayTime(openedAt), formatDurationWithDays(durationMinutes)), nil
+	return fmt.Sprintf(
+		"✅ *Buka puasa tercatat!*\n"+
+			"Jenis: *%s*\n"+
+			"⏱ Mulai: %s\n"+
+			"🏁 Target: %s\n"+
+			"🍽 Buka: %s\n"+
+			"⌛ Durasi: *%s*\n\n"+
+			"Buka lebih awal, streak belum naik — tapi durasi tetap masuk stats.\n"+
+			"Nggak apa, yang penting nggak berhenti. Besok coba lagi! 🌱",
+		displayFastingTypeName(schedule.FastingTypeName),
+		formatDisplayTime(startTime),
+		formatDisplayTime(plannedEndTime),
+		formatDisplayTime(openedAt),
+		formatDurationWithDays(durationMinutes),
+	), nil
 }
 
 func (u *fastingUsecase) DeleteSchedule(phone string) (string, error) {
@@ -428,7 +456,14 @@ func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, start
 		u.markElapsedNotifications(user.ID, startDateTime, endDateTime)
 	}
 
-	return fmt.Sprintf("🎯 *Jadwal %s tersimpan!*\n⏱ Mulai: *%s*\n🏁 Buka: *%s*\n\nBot akan kirim notifikasi otomatis pas mulai & pas selesai.\nNiat udah dikunci — tinggal jalanin. Yuk! 🚀💪", fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime)), nil
+	return fmt.Sprintf(
+		"🎯 *Jadwal %s tersimpan!*\n"+
+			"⏱ Mulai: *%s*\n"+
+			"🏁 Buka: *%s*\n\n"+
+			"Kamu akan dapat notifikasi otomatis saat mulai & saat selesai.\n"+
+			"Niat sudah dikunci — tinggal jalanin. Let's go! 🚀",
+		fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime),
+	), nil
 }
 
 func fastingTypeScheduleDetails(typeID int, durationHours int) (int, string, string) {

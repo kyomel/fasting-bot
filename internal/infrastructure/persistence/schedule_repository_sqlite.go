@@ -456,3 +456,42 @@ func (r *ScheduleRepositorySQLite) FindUsersWithActiveFasting(currentDateTime st
 
 	return scanNotificationTargets(rows)
 }
+
+func (r *ScheduleRepositorySQLite) FindUsersWithExpiredStreaks(currentDateTime string) ([]repository.ExpiredStreakTarget, error) {
+	rows, err := r.db.Query(`
+		SELECT ufs.user_id, COALESCE(NULLIF(u.name, ''), u.phone), ufs.current_streak_days
+		FROM user_fasting_stats ufs
+		JOIN users u ON u.id = ufs.user_id
+		WHERE ufs.current_streak_days > 0
+		AND ufs.last_streak_opened_at != ''
+		AND datetime(ufs.last_streak_opened_at, '+24 hours') < datetime(?)
+		AND NOT EXISTS (
+			SELECT 1 FROM fasting_schedules fs
+			WHERE fs.user_id = ufs.user_id
+			AND fs.is_active = 1
+		)
+	`, currentDateTime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var targets []repository.ExpiredStreakTarget
+	for rows.Next() {
+		var t repository.ExpiredStreakTarget
+		if err := rows.Scan(&t.UserID, &t.Name, &t.CurrentStreakDays); err != nil {
+			continue
+		}
+		targets = append(targets, t)
+	}
+	return targets, nil
+}
+
+func (r *ScheduleRepositorySQLite) ResetStreakByUserID(userID int64) error {
+	_, err := r.db.Exec(`
+		UPDATE user_fasting_stats
+		SET current_streak_days = 0, updated_at = CURRENT_TIMESTAMP
+		WHERE user_id = ?
+	`, userID)
+	return err
+}

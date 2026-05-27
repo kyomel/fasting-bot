@@ -24,6 +24,8 @@ type ScheduleRepository interface {
 	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersWithActiveFasting(currentDateTime string) ([]NotificationTarget, error)
+	FindUsersWithExpiredStreaks(currentDateTime string) ([]ExpiredStreakTarget, error)
+	ResetStreakByUserID(userID int64) error
 }
 
 type NotificationRepository interface {
@@ -37,5 +39,11 @@ type NotificationTarget struct {
 	Name              string
 	FastStart         string
 	FastEnd           string
+	CurrentStreakDays int
+}
+
+type ExpiredStreakTarget struct {
+	UserID            int64
+	Name              string
 	CurrentStreakDays int
 }
