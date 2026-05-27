@@ -527,10 +527,17 @@ func parseScheduleTime(value string, now time.Time) (time.Time, bool) {
 }
 
 func formatDuration(d time.Duration) string {
-	hours := int(d.Hours())
-	minutes := int(d.Minutes()) % 60
-	if hours > 0 {
-		return fmt.Sprintf("%d jam %d menit", hours, minutes)
+	totalMinutes := int(d.Minutes())
+	totalHours := totalMinutes / 60
+	minutes := totalMinutes % 60
+	days := totalHours / 24
+	hours := totalHours % 24
+
+	if days > 0 {
+		return fmt.Sprintf("%d hari %d jam %d menit (total: %d jam %d menit)", days, hours, minutes, totalHours, minutes)
+	}
+	if totalHours > 0 {
+		return fmt.Sprintf("%d jam %d menit", totalHours, minutes)
 	}
 	return fmt.Sprintf("%d menit", minutes)
 }
@@ -543,7 +550,12 @@ func formatDurationWithDays(totalMinutes int) string {
 	days := totalMinutes / (24 * 60)
 	hours := (totalMinutes % (24 * 60)) / 60
 	minutes := totalMinutes % 60
-	return fmt.Sprintf("%d hari %d jam %d menit", days, hours, minutes)
+	totalHours := totalMinutes / 60
+
+	if days > 0 {
+		return fmt.Sprintf("%d hari %d jam %d menit (total: %d jam %d menit)", days, hours, minutes, totalHours, minutes)
+	}
+	return fmt.Sprintf("%d jam %d menit", hours, minutes)
 }
 
 func displayFastingTypeName(name string) string {

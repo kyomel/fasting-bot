@@ -351,9 +351,10 @@ func (r *ScheduleRepositorySQLite) CleanupOldFastingRecords(cutoff string) (int6
 
 func (r *ScheduleRepositorySQLite) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
 	rows, err := r.db.Query(`
-		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
 		JOIN fasting_schedules fs ON u.id = fs.user_id
+		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
 		WHERE fs.is_active = 1
 		AND (
 			(
@@ -389,9 +390,10 @@ func (r *ScheduleRepositorySQLite) FindUsersToNotifyStart(currentTime, currentDa
 
 func (r *ScheduleRepositorySQLite) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
 	rows, err := r.db.Query(`
-		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
 		JOIN fasting_schedules fs ON u.id = fs.user_id
+		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
 		WHERE fs.is_active = 1
 		AND (
 			(
@@ -429,10 +431,28 @@ func scanNotificationTargets(rows *sql.Rows) ([]repository.NotificationTarget, e
 	var targets []repository.NotificationTarget
 	for rows.Next() {
 		var t repository.NotificationTarget
-		if err := rows.Scan(&t.UserID, &t.JID, &t.Phone, &t.Name, &t.FastStart, &t.FastEnd); err != nil {
+		if err := rows.Scan(&t.UserID, &t.JID, &t.Phone, &t.Name, &t.FastStart, &t.FastEnd, &t.CurrentStreakDays); err != nil {
 			continue
 		}
 		targets = append(targets, t)
 	}
 	return targets, nil
+}
+
+func (r *ScheduleRepositorySQLite) FindUsersWithActiveFasting(currentDateTime string) ([]repository.NotificationTarget, error) {
+	rows, err := r.db.Query(`
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, COALESCE(ufs.current_streak_days, 0)
+		FROM users u
+		JOIN fasting_schedules fs ON u.id = fs.user_id
+		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
+		WHERE fs.is_active = 1
+		AND fs.fast_start <= ?
+		AND fs.fast_end > ?
+	`, currentDateTime, currentDateTime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanNotificationTargets(rows)
 }

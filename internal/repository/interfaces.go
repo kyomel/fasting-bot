@@ -23,6 +23,7 @@ type ScheduleRepository interface {
 	CleanupOldFastingRecords(cutoff string) (int64, error)
 	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
+	FindUsersWithActiveFasting(currentDateTime string) ([]NotificationTarget, error)
 }
 
 type NotificationRepository interface {
@@ -30,10 +31,11 @@ type NotificationRepository interface {
 }
 
 type NotificationTarget struct {
-	UserID    int64
-	JID       string
-	Phone     string
-	Name      string
-	FastStart string
-	FastEnd   string
+	UserID            int64
+	JID               string
+	Phone             string
+	Name              string
+	FastStart         string
+	FastEnd           string
+	CurrentStreakDays int
 }
