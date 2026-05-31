@@ -81,7 +81,17 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 		return "", fmt.Errorf("gagal mendaftar: %w", err)
 	}
 
-	return fmt.Sprintf("🎉 *Pendaftaran Berhasil!*\nID: %d\nNama: %s\nNomor: %s\n\nSekarang pilih jenis puasa:\n/list-puasa\n/set-puasa <nomor> <jam_mulai>\n\nContoh: /set-puasa 3 05:00", user.ID, name, phone), nil
+	return fmt.Sprintf("🎉 *Selamat datang, %s!*\n"+
+		"ID: %d\nNomor: %s\n\n"+
+		"Bot ini bakal nemenin kamu tracking puasa — IF, OMAD, Water/Dry/Prolonged Fasting — plus ngirim notifikasi otomatis pas mulai & waktunya buka.\n\n"+
+		"🚀 *Mulai dalam 30 detik:*\n"+
+		"1️⃣ /list-puasa — lihat 10 jenis puasa\n"+
+		"2️⃣ Pilih yang cocok, lalu salah satu:\n"+
+		"   • */set-puasa <nomor> <jam>* — mulai hari ini\n"+
+		"     contoh: `/set-puasa 3 05:00` (IF 16:8 mulai jam 5)\n"+
+		"   • */jadwalkan <nomor> <tanggal> <jam>* — set untuk tanggal tertentu\n"+
+		"     contoh: `/jadwalkan 3 23-05-2026 16:00`\n\n"+
+		"Saran buat pemula: mulai dari IF 14:10 (nomor 2) atau IF 16:8 (nomor 3). Body adaptation lebih halus. 💪", name, user.ID, phone), nil
 }
 
 func (u *fastingUsecase) SetName(phone, name string) (string, error) {
@@ -157,7 +167,11 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 
 	schedule, err := u.scheduleRepo.FindActiveByUserID(user.ID)
 	if err != nil {
-		return fmt.Sprintf("📋 *Status Akun*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal fasting.\n\nAtur dengan: /list-puasa lalu /set-puasa <nomor> <jam_mulai>", user.ID, name, user.Phone), nil
+		return fmt.Sprintf("📋 *Status Akun*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal puasa aktif.\n\n"+
+			"Atur sekarang:\n"+
+			"• */list-puasa* — lihat semua jenis\n"+
+			"• */set-puasa <nomor> <jam>* — mulai hari ini\n"+
+			"• */jadwalkan <nomor> <tanggal> <jam>* — set untuk tanggal tertentu", user.ID, name, user.Phone), nil
 	}
 	fastingTypeName := schedule.FastingTypeName
 	if fastingTypeName == "" {
@@ -296,6 +310,7 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 		return "", fmt.Errorf("gagal membatalkan: %w", err)
 	}
 
+	durationHours := durationMinutes / 60
 	if streakQualified {
 		return fmt.Sprintf(
 			"🎊 *Selesai — keren banget!*\n"+
@@ -304,13 +319,15 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 				"🏁 Target: %s\n"+
 				"🍽 Buka: %s\n"+
 				"⌛ Total: *%s*\n\n"+
-				"🔥 Streak bertambah! Konsistensi seperti ini yang bikin perubahan nyata.\n"+
-				"Cek progress: /stats atau /leaderboard 🏆",
+				"🔥 Streak bertambah! Adaptasi metabolik kamu makin solid setiap sesi.\n\n"+
+				"🥗 *Cara buka yang ramah tubuh:*\n%s\n\n"+
+				"Cek progress: */stats* (pribadi) atau */leaderboard* (grup) 🏆",
 			displayFastingTypeName(schedule.FastingTypeName),
 			formatDisplayTime(startTime),
 			formatDisplayTime(plannedEndTime),
 			formatDisplayTime(openedAt),
 			formatDurationWithDays(durationMinutes),
+			breakFastTipForDuration(durationHours),
 		), nil
 	}
 
@@ -321,14 +338,38 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 			"🏁 Target: %s\n"+
 			"🍽 Buka: %s\n"+
 			"⌛ Durasi: *%s*\n\n"+
-			"Buka lebih awal, streak belum naik — tapi durasi tetap masuk stats.\n"+
-			"Nggak apa, yang penting nggak berhenti. Besok coba lagi! 🌱",
+			"Buka sebelum target — streak belum naik, tapi durasi tetap masuk stats. Semua jam puasa = waktu insulin rendah = manfaat tetap.\n\n"+
+			"🥗 *Cara buka yang ramah tubuh:*\n%s\n\n"+
+			"Konsistensi > kesempurnaan. Set jadwal berikutnya: /set-puasa atau /jadwalkan 🌱",
 		displayFastingTypeName(schedule.FastingTypeName),
 		formatDisplayTime(startTime),
 		formatDisplayTime(plannedEndTime),
 		formatDisplayTime(openedAt),
 		formatDurationWithDays(durationMinutes),
+		breakFastTipForDuration(durationHours),
 	), nil
+}
+
+// breakFastTipForDuration returns short, secular refeeding advice scaled to
+// the actual fast length (insulin-spike avoidance for short fasts up to
+// refeeding-syndrome warnings for prolonged fasts).
+func breakFastTipForDuration(durationHours int) string {
+	switch {
+	case durationHours < 12:
+		return "• Mulai dengan protein + lemak sebelum karbo — kurva insulin lebih landai.\n• Makan pelan, kasih waktu hormon kenyang (GLP-1, CCK) bekerja."
+	case durationHours < 18:
+		return "• Protein & lemak dulu (telur, alpukat, kacang), baru sayur, baru karbo.\n• Hindari gula/nasi sebagai gigitan pertama — bisa bikin reactive hypoglycemia.\n• 1-2 gelas air dulu sebelum makan."
+	case durationHours < 24:
+		return "• Mulai dengan kaldu hangat atau sup ringan — bangunkan sistem cerna pelan.\n• Lalu protein (telur/yogurt), baru karbo kompleks.\n• Tambahkan sejumput garam — natrium banyak terbuang saat puasa panjang."
+	case durationHours < 48:
+		return "• *Cairan dulu 30-60 menit:* kaldu tulang, air kelapa, sup sayur — bukan langsung makanan padat.\n• Lalu makanan lunak: telur rebus, pisang, alpukat.\n• Hindari: gorengan, gula, alkohol, sayur mentah.\n• Elektrolit penting: garam + kalium duluan."
+	default:
+		return "⚠️ *Refeed pelan-pelan — refeeding syndrome itu nyata di puasa >48 jam:*\n" +
+			"• 4-6 jam pertama: cairan saja (kaldu + elektrolit Na/K/Mg).\n" +
+			"• Lalu jus encer / bubur tipis / pisang lembut.\n" +
+			"• Makanan utuh baru setelah 24 jam refeed bertahap.\n" +
+			"• Hindari porsi besar — fosfat & magnesium bisa drop drastis kalau langsung makan banyak."
+	}
 }
 
 func (u *fastingUsecase) DeleteSchedule(phone string) (string, error) {
@@ -456,14 +497,37 @@ func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, start
 		u.markElapsedNotifications(user.ID, startDateTime, endDateTime)
 	}
 
+	plannedHours := int(endDateTime.Sub(startDateTime).Hours())
 	return fmt.Sprintf(
 		"🎯 *Jadwal %s tersimpan!*\n"+
 			"⏱ Mulai: *%s*\n"+
-			"🏁 Buka: *%s*\n\n"+
-			"Kamu akan dapat notifikasi otomatis saat mulai & saat selesai.\n"+
-			"Niat sudah dikunci — tinggal jalanin. Let's go! 🚀",
+			"🏁 Buka: *%s* (±%d jam)\n\n"+
+			"%s\n\n"+
+			"Kamu akan dapat notifikasi otomatis saat mulai & saat waktunya buka.\n"+
+			"_Mau ganti? Tinggal jalankan /set-puasa atau /jadwalkan lagi — jadwal lama otomatis dimatikan._\n\n"+
+			"Niat dikunci — tinggal jalanin. Let's go! 🚀",
 		fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime),
+		plannedHours, scheduleTeaserForDuration(plannedHours),
 	), nil
+}
+
+// scheduleTeaserForDuration shows a 1-line, secular preview of what the body
+// will do during the planned fast — appears in the schedule-saved confirmation.
+func scheduleTeaserForDuration(durationHours int) string {
+	switch {
+	case durationHours <= 0:
+		return "Tubuhmu akan mulai turunkan insulin & masuk mode repair."
+	case durationHours <= 14:
+		return "💡 Di rentang ini: insulin turun, glikogen mulai dipakai, sel mulai shift ke mode \"akses\" lemak."
+	case durationHours <= 20:
+		return "💡 Di rentang ini: *metabolic switch* aktif, ketogenesis dimulai, autophagy ramp-up — Yoshinori Ohsumi dapat Nobel buat proses ini."
+	case durationHours <= 36:
+		return "💡 Di rentang ini: HGH spike (proteksi otot), IGF-1 turun, autophagy puncak. Wajib hidrasi + sedikit garam."
+	case durationHours <= 72:
+		return "💡 Di rentang ini: sinyal regenerasi stem cell aktif (Valter Longo, Cell 2014). ⚠️ Elektrolit wajib: Na, K, Mg tiap hari."
+	default:
+		return "💡 Zona prolonged fasting (>72 jam): imun reset & deep cellular cleanup. ⚠️ Wajib hidrasi + elektrolit, refeed pelan-pelan, konsultasi dokter kalau ada kondisi medis."
+	}
 }
 
 func fastingTypeScheduleDetails(typeID int, durationHours int) (int, string, string) {
