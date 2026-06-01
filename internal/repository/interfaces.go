@@ -23,6 +23,8 @@ type ScheduleRepository interface {
 	CleanupOldFastingRecords(cutoff string) (int64, error)
 	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
+	FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]NotificationTarget, error)
+	FindUsersNearTargetNotification(notificationType, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersWithActiveFasting(currentDateTime string) ([]NotificationTarget, error)
 	FindUsersWithExpiredStreaks(currentDateTime string) ([]ExpiredStreakTarget, error)
 	ResetStreakByUserID(userID int64) error
@@ -39,6 +41,7 @@ type NotificationTarget struct {
 	Name              string
 	FastStart         string
 	FastEnd           string
+	FastingTypeName   string
 	CurrentStreakDays int
 }
 

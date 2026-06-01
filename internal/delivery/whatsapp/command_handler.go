@@ -160,6 +160,11 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 			return h.usecase.GetStatus(phone)
 		})
 
+	case "/motivasi":
+		return h.callUsecase(phone, "GetMotivation", func() (string, error) {
+			return h.usecase.GetMotivation(phone)
+		})
+
 	case "/buka":
 		if len(args) > 0 {
 			return h.handleBuka(phone, args)
@@ -227,6 +232,7 @@ var errorLabels = map[string]string{
 	"RegisterUser":   "mendaftar",
 	"SetName":        "mengubah nama",
 	"GetStatus":      "mengambil status",
+	"GetMotivation":  "mengambil pesan motivasi",
 	"CancelToday":    "membatalkan",
 	"BreakFastingAt": "membuka puasa",
 	"DeleteSchedule": "menghapus jadwal",
@@ -326,6 +332,7 @@ func getHelpText() string {
 /setname <nama> — Ubah nama
 /list-puasa — Lihat jenis-jenis puasa
 /status — Cek status puasa kamu sekarang
+/motivasi — Suntikan semangat sesuai fase puasamu
 /batalkan — Batalkan jadwal puasa aktif
 /stats — Statistik puasa pribadi
 /leaderboard — Klasemen puasa grup

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"fasting-bot/internal/domain"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -102,6 +104,70 @@ func TestResetStaleCurrentStreaksKeepsActiveFasting(t *testing.T) {
 	assertCurrentStreak(t, db, 1, 3)
 }
 
+func TestFindUsersForElapsedNotificationDedupsWithinCurrentFast(t *testing.T) {
+	db := newNotificationTargetTestDB(t)
+	repo := &ScheduleRepositorySQLite{db: db}
+
+	if _, err := db.Exec(`
+		INSERT INTO users (id, phone, name, jid) VALUES
+			(1, '+6201', 'Ari', 'ari@s.whatsapp.net'),
+			(2, '+6202', 'Bima', 'bima@s.whatsapp.net'),
+			(3, '+6203', 'Cici', 'cici@s.whatsapp.net');
+		INSERT INTO fasting_schedules (user_id, fast_start, fast_end, fasting_type_name, is_active) VALUES
+			(1, '2026-06-01 00:00', '2026-06-01 18:00', 'IF 18:6', 1),
+			(2, '2026-06-01 00:00', '2026-06-01 18:00', 'IF 18:6', 1),
+			(3, '2026-06-01 00:00', '2026-06-01 12:00', 'IF 12:12', 1);
+		INSERT INTO user_fasting_stats (user_id, current_streak_days) VALUES (1, 2), (2, 3), (3, 4);
+		INSERT INTO notification_logs (user_id, notification_type, sent_at) VALUES
+			(1, 'phase_fat_burning', '2026-05-31 12:00:00'),
+			(2, 'phase_fat_burning', '2026-06-01 12:01:00');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	targets, err := repo.FindUsersForElapsedNotification(domain.NotificationTypePhaseFatBurning, 12, "2026-06-01 12:30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 1 {
+		t.Fatalf("FindUsersForElapsedNotification() returned %d targets, want 1: %#v", len(targets), targets)
+	}
+	if targets[0].UserID != 1 || targets[0].FastingTypeName != "IF 18:6" || targets[0].CurrentStreakDays != 2 {
+		t.Fatalf("unexpected target: %#v", targets[0])
+	}
+}
+
+func TestFindUsersNearTargetNotificationDedupsWithinCurrentFast(t *testing.T) {
+	db := newNotificationTargetTestDB(t)
+	repo := &ScheduleRepositorySQLite{db: db}
+
+	if _, err := db.Exec(`
+		INSERT INTO users (id, phone, name, jid) VALUES
+			(1, '+6201', 'Ari', 'ari@s.whatsapp.net'),
+			(2, '+6202', 'Bima', 'bima@s.whatsapp.net'),
+			(3, '+6203', 'Cici', 'cici@s.whatsapp.net');
+		INSERT INTO fasting_schedules (user_id, fast_start, fast_end, fasting_type_name, is_active) VALUES
+			(1, '2026-06-01 00:00', '2026-06-01 18:00', 'IF 18:6', 1),
+			(2, '2026-06-01 00:00', '2026-06-01 18:00', 'IF 18:6', 1),
+			(3, '2026-06-01 00:00', '2026-06-01 20:00', 'IF 20:4', 1);
+		INSERT INTO notification_logs (user_id, notification_type, sent_at) VALUES
+			(2, 'near_target', '2026-06-01 16:01:00');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	targets, err := repo.FindUsersNearTargetNotification(domain.NotificationTypeNearTarget, "2026-06-01 16:30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 1 {
+		t.Fatalf("FindUsersNearTargetNotification() returned %d targets, want 1: %#v", len(targets), targets)
+	}
+	if targets[0].UserID != 1 {
+		t.Fatalf("unexpected target: %#v", targets[0])
+	}
+}
+
 func mustParseStoredDateTime(t *testing.T, value string) time.Time {
 	t.Helper()
 	parsed, err := time.Parse(storeDateTimeLayout, value)
@@ -151,4 +217,44 @@ func assertCurrentStreak(t *testing.T, db *sql.DB, userID int64, want int) {
 	if got != want {
 		t.Fatalf("current_streak_days for user %d = %d, want %d", userID, got, want)
 	}
+}
+
+func newNotificationTargetTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	queries := []string{
+		`CREATE TABLE users (
+			id INTEGER PRIMARY KEY,
+			phone TEXT NOT NULL,
+			name TEXT,
+			jid TEXT NOT NULL
+		);`,
+		`CREATE TABLE fasting_schedules (
+			user_id INTEGER NOT NULL,
+			fast_start TEXT NOT NULL,
+			fast_end TEXT NOT NULL,
+			fasting_type_name TEXT DEFAULT '',
+			is_active BOOLEAN DEFAULT 1
+		);`,
+		`CREATE TABLE user_fasting_stats (
+			user_id INTEGER PRIMARY KEY,
+			current_streak_days INTEGER NOT NULL DEFAULT 0
+		);`,
+		`CREATE TABLE notification_logs (
+			user_id INTEGER NOT NULL,
+			notification_type TEXT NOT NULL,
+			sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+	}
+	for _, query := range queries {
+		if _, err := db.Exec(query); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return db
 }

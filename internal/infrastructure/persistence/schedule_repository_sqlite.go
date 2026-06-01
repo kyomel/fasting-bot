@@ -351,7 +351,7 @@ func (r *ScheduleRepositorySQLite) CleanupOldFastingRecords(cutoff string) (int6
 
 func (r *ScheduleRepositorySQLite) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
 	rows, err := r.db.Query(`
-		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, COALESCE(ufs.current_streak_days, 0)
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
 		JOIN fasting_schedules fs ON u.id = fs.user_id
 		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
@@ -390,7 +390,7 @@ func (r *ScheduleRepositorySQLite) FindUsersToNotifyStart(currentTime, currentDa
 
 func (r *ScheduleRepositorySQLite) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
 	rows, err := r.db.Query(`
-		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, COALESCE(ufs.current_streak_days, 0)
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
 		JOIN fasting_schedules fs ON u.id = fs.user_id
 		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
@@ -427,21 +427,79 @@ func (r *ScheduleRepositorySQLite) FindUsersToNotifyEnd(currentTime, currentDate
 	return scanNotificationTargets(rows)
 }
 
+func (r *ScheduleRepositorySQLite) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
+	rows, err := r.db.Query(`
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
+		FROM users u
+		JOIN fasting_schedules fs ON u.id = fs.user_id
+		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
+		WHERE fs.is_active = 1
+		AND length(fs.fast_start) > 5
+		AND length(fs.fast_end) > 5
+		AND datetime(fs.fast_start) <= datetime(?)
+		AND datetime(fs.fast_end) > datetime(?)
+		AND datetime(fs.fast_start, '+' || ? || ' hours') <= datetime(?)
+		AND datetime(fs.fast_start, '+' || ? || ' hours', '+1 hour') > datetime(?)
+		AND NOT EXISTS (
+			SELECT 1 FROM notification_logs nl
+			WHERE nl.user_id = u.id
+			AND nl.notification_type = ?
+			AND datetime(nl.sent_at) >= datetime(fs.fast_start)
+		)
+	`, currentDateTime, currentDateTime, triggerAfterHours, currentDateTime, triggerAfterHours, currentDateTime, notificationType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanNotificationTargets(rows)
+}
+
+func (r *ScheduleRepositorySQLite) FindUsersNearTargetNotification(notificationType, currentDateTime string) ([]repository.NotificationTarget, error) {
+	rows, err := r.db.Query(`
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
+		FROM users u
+		JOIN fasting_schedules fs ON u.id = fs.user_id
+		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
+		WHERE fs.is_active = 1
+		AND length(fs.fast_start) > 5
+		AND length(fs.fast_end) > 5
+		AND datetime(fs.fast_start) <= datetime(?)
+		AND datetime(fs.fast_end) > datetime(?)
+		AND datetime(fs.fast_end, '-2 hours') <= datetime(?)
+		AND NOT EXISTS (
+			SELECT 1 FROM notification_logs nl
+			WHERE nl.user_id = u.id
+			AND nl.notification_type = ?
+			AND datetime(nl.sent_at) >= datetime(fs.fast_start)
+		)
+	`, currentDateTime, currentDateTime, currentDateTime, notificationType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanNotificationTargets(rows)
+}
+
 func scanNotificationTargets(rows *sql.Rows) ([]repository.NotificationTarget, error) {
 	var targets []repository.NotificationTarget
 	for rows.Next() {
 		var t repository.NotificationTarget
-		if err := rows.Scan(&t.UserID, &t.JID, &t.Phone, &t.Name, &t.FastStart, &t.FastEnd, &t.CurrentStreakDays); err != nil {
-			continue
+		if err := rows.Scan(&t.UserID, &t.JID, &t.Phone, &t.Name, &t.FastStart, &t.FastEnd, &t.FastingTypeName, &t.CurrentStreakDays); err != nil {
+			return nil, err
 		}
 		targets = append(targets, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return targets, nil
 }
 
 func (r *ScheduleRepositorySQLite) FindUsersWithActiveFasting(currentDateTime string) ([]repository.NotificationTarget, error) {
 	rows, err := r.db.Query(`
-		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, COALESCE(ufs.current_streak_days, 0)
+		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
 		JOIN fasting_schedules fs ON u.id = fs.user_id
 		LEFT JOIN user_fasting_stats ufs ON u.id = ufs.user_id
@@ -480,9 +538,12 @@ func (r *ScheduleRepositorySQLite) FindUsersWithExpiredStreaks(currentDateTime s
 	for rows.Next() {
 		var t repository.ExpiredStreakTarget
 		if err := rows.Scan(&t.UserID, &t.Name, &t.CurrentStreakDays); err != nil {
-			continue
+			return nil, err
 		}
 		targets = append(targets, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return targets, nil
 }
