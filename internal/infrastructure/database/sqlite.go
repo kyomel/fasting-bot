@@ -100,6 +100,14 @@ func migrate(conn *sql.DB) error {
 			name TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);`,
+		`CREATE TABLE IF NOT EXISTS user_badges (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			badge_key TEXT NOT NULL,
+			awarded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(user_id, badge_key),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
 		`CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);`,
 		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_user_active ON fasting_schedules(user_id, is_active);`,
 		`CREATE INDEX IF NOT EXISTS idx_fasting_schedules_active_start ON fasting_schedules(is_active, fast_start);`,
@@ -111,6 +119,7 @@ func migrate(conn *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_fasting_records_total ON fasting_records(duration_minutes);`,
 		`CREATE INDEX IF NOT EXISTS idx_fasting_records_created_at ON fasting_records(created_at);`,
 		`CREATE INDEX IF NOT EXISTS idx_user_fasting_stats_total ON user_fasting_stats(total_minutes DESC);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);`,
 	}
 
 	for _, query := range queries {

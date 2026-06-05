@@ -84,6 +84,7 @@ func TestGetMotivation(t *testing.T) {
 				&motivationUserRepo{user: tt.user},
 				&motivationScheduleRepo{schedule: tt.schedule},
 				&motivationNotificationRepo{},
+				&motivationBadgeRepo{},
 			)
 
 			got, err := uc.GetMotivation("+628123456789")
@@ -203,5 +204,15 @@ func (r *motivationScheduleRepo) ResetStreakByUserID(userID int64) error { retur
 type motivationNotificationRepo struct{}
 
 func (r *motivationNotificationRepo) LogNotification(userID int64, notificationType string) error {
+	return nil
+}
+
+type motivationBadgeRepo struct{}
+
+func (r *motivationBadgeRepo) EarnedBadges(userID int64) (map[domain.BadgeKey]struct{}, error) {
+	return map[domain.BadgeKey]struct{}{}, nil
+}
+
+func (r *motivationBadgeRepo) AwardBadges(userID int64, keys []domain.BadgeKey) error {
 	return nil
 }

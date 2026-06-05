@@ -76,19 +76,22 @@ func (s *Scheduler) notifyStart(currentTime, currentDate, currentDateTime string
 		if isDryFastingName(t.FastingTypeName) {
 			preview = dryFastingPreview(durationHours)
 		}
+		closing := "🧘 Lapar datang bergelombang. Minum yang cukup, napas pelan, lanjut satu jam lagi. 🔥"
+		if isDryFastingName(t.FastingTypeName) {
+			closing = "🧘 Lapar datang bergelombang. Napas pelan, pantau tubuh, jangan paksa kalau tidak aman. 🔥"
+		}
 		msg := fmt.Sprintf(
 			"⏰ *Puasa dimulai, %s!*\n\n"+
-				"🏁 Target buka: *%s* (±%d jam)\n\n"+
+				"🏁 Target: *%s* (±%d jam)\n"+
 				"%s\n\n"+
-				"%s\n"+
-				"🧘 Lapar itu hormon (ghrelin), bukan keadaan darurat. Datang seperti gelombang, hilang dalam ~20 menit. Tarik napas 4-4-4 dan lewati.\n\n"+
-				"_Kalau rencana berubah & mau ganti jadwal, pakai /set-puasa atau /jadwalkan._\n\n"+
-				"Let's go! 🔥",
+				"%s\n\n"+
+				"%s",
 			t.Name,
 			formatScheduleForMessage(t.FastEnd),
 			durationHours,
 			preview,
 			startSafetyMessage(t.FastingTypeName, durationHours),
+			closing,
 		)
 		if err := s.notifier.Send(t.JID, msg); err != nil {
 			fmt.Printf("❌ Failed to send start notification: %v\n", err)
@@ -180,10 +183,9 @@ func buildPhaseMilestoneMessage(t repository.NotificationTarget, trigger domain.
 
 	return fmt.Sprintf(
 		"%s *%s aktif, %s!*\n\n"+
-			"Kamu sudah puasa sekitar *%d jam*.\n"+
-			"🏁 Sisa target: *%s*\n\n"+
+			"Puasa sekitar *%d jam* — sisa *%s*.\n\n"+
 			"%s\n\n"+
-			"Lanjutkan satu jam demi satu jam — progress biologisnya nyata. 💪",
+			"Progress kecil tetap progress. Dengarkan tubuh, lanjut bila terasa aman. 💪",
 		phase.Emoji,
 		phase.Name,
 		t.Name,
@@ -203,10 +205,9 @@ func buildNearTargetMotivationMessage(t repository.NotificationTarget, currentDa
 
 	return fmt.Sprintf(
 		"🏁 *Tinggal sedikit lagi, %s!*\n\n"+
-			"⌛ Sudah berjalan: *%s*\n"+
-			"⏳ Sisa target: *%s*\n\n"+
+			"⌛ Berjalan: *%s* • Sisa: *%s*\n\n"+
 			"%s\n\n"+
-			"Kalau tubuh terasa aman, lanjutkan pelan sampai garis finish. Keselamatan tetap nomor satu. 🔥",
+			"Finish dengan tenang. Kalau tubuh tidak nyaman, keselamatan dulu. 🔥",
 		t.Name,
 		elapsed,
 		remaining,
@@ -222,10 +223,9 @@ func buildHydrationReminderMessage(t repository.NotificationTarget, elapsedHours
 
 	return fmt.Sprintf(
 		"💧 *Reminder hidrasi, %s*\n\n"+
-			"Kamu sudah sekitar *%d jam* puasa.\n"+
-			"🏁 Sisa target: *%s*\n\n"+
+			"Sudah sekitar *%d jam* puasa — sisa *%s*.\n\n"+
 			"%s\n\n"+
-			"Kalau tubuh terasa lemas, cek dulu cairan dan elektrolit sebelum menganggap itu lapar. 💪",
+			"Kadang lemas = cairan/elektrolit kurang, bukan lapar. Cek tubuh dulu. 💪",
 		t.Name,
 		elapsedHours,
 		calculateDuration(currentDateTime, t.FastEnd),
@@ -247,22 +247,18 @@ func (s *Scheduler) notifyEnd(currentTime, currentDate, currentDateTime string, 
 		streakMsg := buildStreakMessage(t.Name, t.CurrentStreakDays)
 		msg := fmt.Sprintf(
 			"🏁 *Waktunya buka, %s!*\n\n"+
-				"Puasa dari *%s* sampai *%s*\n"+
+				"%s → %s\n"+
 				"⌛ Total: *%s*\n\n"+
 				"%s\n\n"+
 				"🍽 *Cara buka yang ramah tubuh:*\n%s\n\n"+
-				"📝 *Catat buka puasamu:*\n"+
-				"• */buka* → buka sekarang\n"+
-				"• */buka %s HH:MM* → buka di waktu lain (DD-MM-YYYY HH:MM)\n"+
-				"  contoh: `/buka %s 18:30`\n\n"+
-				"_Tanpa /buka, durasi nggak masuk stats & streak!_ ⚠️",
+				"📝 Catat agar masuk stats: */buka*\n"+
+				"Kalau buka di waktu lain: `/buka %s 18:30`",
 			t.Name,
 			formatScheduleForMessage(t.FastStart),
 			formatScheduleForMessage(t.FastEnd),
 			duration,
 			streakMsg,
 			refeedGuidance(durationHours),
-			todayDate,
 			todayDate,
 		)
 		if err := s.notifier.Send(t.JID, msg); err != nil {
@@ -321,12 +317,11 @@ func (s *Scheduler) buildNoFastersMessage() string {
 	return fmt.Sprintf(
 		"🌤️ *Sore Check-in*\n\n"+
 			"Belum ada yang puasa hari ini.\n\n"+
-			"Sore = waktu bagus untuk mulai. Lewati makan malam, tidur dengan insulin rendah, dan besok pagi kamu sudah masuk mode fat-burning.\n\n"+
+			"Sore bisa jadi start ringan: lewati makan malam, tidur lebih awal, besok tubuh sudah masuk ritme insulin rendah.\n\n"+
 			"🧠 *Tahukah kamu?*\n%s\n\n"+
-			"Siapa duluan? 💪\n"+
+			"Mau mulai?\n"+
 			"• */list-puasa* — lihat 10 jenis puasa\n"+
-			"• */set-puasa <nomor> <jam>* — mulai hari ini\n"+
-			"• */jadwalkan <nomor> <tanggal> <jam>* — kunci jadwal besok/lusa",
+			"• */set-puasa <nomor> <jam>* — mulai hari ini",
 		tip,
 	)
 }
@@ -345,11 +340,11 @@ func (s *Scheduler) buildActiveFastersMessage(fasters []repository.NotificationT
 	}
 
 	encouragements := []string{
-		"Setiap menit yang lewat, insulin makin rendah & lipolysis (pembakaran lemak) makin tinggi. Tubuh kalian lagi bekerja di mode yang tidak bisa dibeli di apotek mana pun. 🔥",
-		"Sel kalian lagi sibuk autophagy — bersih-bersih protein rusak. Bayangin sel kalian lagi maraton beresin gudang. Hasilnya baru kelihatan minggu depan, tapi prosesnya jalan sekarang. ✨",
-		"Otak kalian lagi switch ke ketone — bahan bakar yang lebih bersih daripada glukosa. Banyak yang bilang fokus malah naik di jam-jam ini. 🧠",
-		"mTOR off, AMPK on. Mode growth dimatikan, mode repair dihidupkan. Ini bukan cuma soal angka di timbangan — ini soal kualitas sel kalian 5 tahun ke depan. 💎",
-		"Lapar datang & pergi seperti gelombang — hormon ghrelin puncaknya cuma ~20 menit. Lewati gelombangnya, dia hilang sendiri. Kalian lebih kuat dari rasa lapar sesaat. 💪",
+		"Insulin sedang turun, akses lemak sedang naik. Keep it steady. 🔥",
+		"Autophagy itu proses beres-beres sel. Pelan, sunyi, tapi nyata. ✨",
+		"Ketone mulai jadi bahan bakar alternatif. Banyak orang merasa fokus lebih stabil. 🧠",
+		"Puasa bukan cuma angka timbangan; ini latihan ritme makan dan istirahat tubuh. 💎",
+		"Lapar datang seperti gelombang. Tunggu sebentar, biasanya reda. 💪",
 	}
 	encouragement := encouragements[time.Now().YearDay()%len(encouragements)]
 
@@ -358,9 +353,7 @@ func (s *Scheduler) buildActiveFastersMessage(fasters []repository.NotificationT
 			"%s sedang puasa sekarang! 🔥\n\n"+
 			"%s\n\n"+
 			"%s\n\n"+
-			"Yang belum ikut, pintu masih terbuka:\n"+
-			"• */set-puasa <nomor> <jam>* — mulai sekarang\n"+
-			"• */jadwalkan <nomor> <tanggal> <jam>* — set untuk besok",
+			"Yang mau ikut: */set-puasa <nomor> <jam>*",
 		countWord,
 		strings.Join(lines, "\n"),
 		encouragement,
@@ -381,12 +374,8 @@ func (s *Scheduler) checkBrokenStreaks() {
 		msg := fmt.Sprintf(
 			"🔄 *Streak Reset*\n\n"+
 				"*%s* — streak %d hari telah reset.\n\n"+
-				"Streak putus ≠ progress hilang. Adaptasi metabolik, sensitivitas insulin, dan fleksibilitas bahan bakar yang sudah kamu bangun *masih ada* di sel-selmu. Yang reset cuma angkanya, bukan biologinya.\n\n"+
-				"Riset menunjukkan orang yang restart cepat setelah putus = orang yang punya streak panjang berikutnya. Yang membedakan bukan yang tidak pernah jatuh, tapi yang tidak lama di tanah.\n\n"+
-				"Mulai lagi kapan pun:\n"+
-				"• */set-puasa <nomor> <jam>* — mulai hari ini\n"+
-				"• */jadwalkan <nomor> <tanggal> <jam>* — kunci jadwal besok\n"+
-				"• */list-puasa* — pilih metode yang lebih ringan dulu (mis. IF 14:10) 💪",
+				"Angka reset, progress tubuh tidak hilang. Mulai lagi dengan ritme yang lebih ringan kalau perlu.\n\n"+
+				"Restart: */set-puasa <nomor> <jam>* 💪",
 			t.Name, t.CurrentStreakDays,
 		)
 

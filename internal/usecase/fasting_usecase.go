@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 	"sync"
@@ -34,6 +35,7 @@ type FastingUsecase interface {
 	BreakFastingAt(phone, dateInput, openTime string) (string, error)
 	DeleteSchedule(phone string) (string, error)
 	GetStats(phone string) (string, error)
+	GetBadges(phone string) (string, error)
 	GetLeaderboard() (string, error)
 	GetMotivation(phone string) (string, error)
 	SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error)
@@ -49,17 +51,20 @@ type fastingUsecase struct {
 	userRepo         repository.UserRepository
 	scheduleRepo     repository.ScheduleRepository
 	notificationRepo repository.NotificationRepository
+	badgeRepo        repository.BadgeRepository
 }
 
 func NewFastingUsecase(
 	userRepo repository.UserRepository,
 	scheduleRepo repository.ScheduleRepository,
 	notificationRepo repository.NotificationRepository,
+	badgeRepo repository.BadgeRepository,
 ) FastingUsecase {
 	return &fastingUsecase{
 		userRepo:         userRepo,
 		scheduleRepo:     scheduleRepo,
 		notificationRepo: notificationRepo,
+		badgeRepo:        badgeRepo,
 	}
 }
 
@@ -318,11 +323,16 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 	if err := u.notificationRepo.LogNotification(user.ID, "opened"); err != nil {
 		return "", fmt.Errorf("gagal membatalkan: %w", err)
 	}
+	newBadges, err := u.evaluateAndAwardBadges(user.ID, record)
+	if err != nil {
+		log.Printf("[WARN] evaluateAndAwardBadges failed for user %d: %v", user.ID, err)
+	}
+	badgeUnlockMessage := formatBadgeUnlock(newBadges)
 
 	durationHours := durationMinutes / 60
 	extendedFastMessage := extendedFastCompletionMessage(durationHours, schedule.FastingTypeName)
 	if streakQualified {
-		return fmt.Sprintf(
+		message := fmt.Sprintf(
 			"🎊 *Selesai — keren banget!*\n"+
 				"Jenis: *%s*\n"+
 				"⏱ Mulai: %s\n"+
@@ -340,10 +350,14 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 			formatDurationWithDays(durationMinutes),
 			extendedFastMessage,
 			breakFastTipForDuration(durationHours),
-		), nil
+		)
+		if badgeUnlockMessage != "" {
+			message += "\n\n" + badgeUnlockMessage
+		}
+		return message, nil
 	}
 
-	return fmt.Sprintf(
+	message := fmt.Sprintf(
 		"✅ *Buka puasa tercatat!*\n"+
 			"Jenis: *%s*\n"+
 			"⏱ Mulai: %s\n"+
@@ -361,7 +375,11 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 		formatDurationWithDays(durationMinutes),
 		extendedFastMessage,
 		breakFastTipForDuration(durationHours),
-	), nil
+	)
+	if badgeUnlockMessage != "" {
+		message += "\n\n" + badgeUnlockMessage
+	}
+	return message, nil
 }
 
 func extendedFastCompletionMessage(durationHours int, fastingTypeName string) string {
@@ -442,7 +460,45 @@ func (u *fastingUsecase) GetStats(phone string) (string, error) {
 		return "📊 *Stats Puasa*\nBelum ada hasil puasa yang tercatat.\n\nGunakan /buka setelah puasa dimulai supaya durasi masuk ke stats.", nil
 	}
 
-	return fmt.Sprintf("📊 *Stats Puasa %s*\nTotal sesi: %d\nStreak puasa saat ini: %d hari\nStreak puasa terpanjang: %d hari\nTotal waktu puasa: %s\n\nTerakhir buka: %s\nDurasi terakhir: %s", stats.Name, stats.TotalSessions, stats.CurrentStreakDays, stats.LongestStreakDays, formatDurationWithDays(stats.TotalMinutes), formatScheduleDisplay(stats.LastOpenedAt), formatDurationWithDays(stats.LastDurationMinutes)), nil
+	if _, err := u.evaluateAndAwardBadges(user.ID, nil); err != nil {
+		log.Printf("[WARN] lazy badge backfill failed for user %d: %v", user.ID, err)
+	}
+
+	message := fmt.Sprintf("📊 *Stats Puasa %s*\nTotal sesi: %d\nStreak puasa saat ini: %d hari\nStreak puasa terpanjang: %d hari\nTotal waktu puasa: %s\n\nTerakhir buka: %s\nDurasi terakhir: %s", stats.Name, stats.TotalSessions, stats.CurrentStreakDays, stats.LongestStreakDays, formatDurationWithDays(stats.TotalMinutes), formatScheduleDisplay(stats.LastOpenedAt), formatDurationWithDays(stats.LastDurationMinutes))
+	if shelf := u.badgeShelf(user.ID); shelf != "" {
+		message += "\n\n🏅 *Badge:* " + shelf + "\nCek koleksi lengkap: /badge"
+	}
+	return message, nil
+}
+
+func (u *fastingUsecase) GetBadges(phone string) (string, error) {
+	user, err := u.lookupUser(phone)
+	if err != nil {
+		return "", err
+	}
+	if user == nil {
+		return msgNotRegistered, nil
+	}
+
+	var stats *domain.FastingStats
+	if err := u.refreshStaleCurrentStreaks(); err != nil {
+		return "", fmt.Errorf("gagal memperbarui streak puasa: %w", err)
+	}
+	stats, err = u.scheduleRepo.FindFastingStatsByUserID(user.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("gagal mengambil stats badge: %w", err)
+	}
+	if stats != nil {
+		if _, err := u.evaluateAndAwardBadges(user.ID, nil); err != nil {
+			log.Printf("[WARN] lazy badge backfill failed for user %d: %v", user.ID, err)
+		}
+	}
+
+	earned, err := u.earnedBadges(user.ID)
+	if err != nil {
+		return "", fmt.Errorf("gagal mengambil badge: %w", err)
+	}
+	return formatBadgeCollection(stats, earned), nil
 }
 
 func (u *fastingUsecase) GetLeaderboard() (string, error) {
@@ -456,6 +512,9 @@ func (u *fastingUsecase) GetLeaderboard() (string, error) {
 	}
 	if len(entries) == 0 {
 		return "🏆 *Leaderboard Puasa*\nBelum ada data puasa.\n\nLeaderboard akan terisi setelah user menjalankan /buka setelah puasa dimulai.", nil
+	}
+	if err := u.awardBadges(entries[0].UserID, []domain.BadgeKey{domain.BadgeGroupChampion}); err != nil {
+		log.Printf("[WARN] award group champion badge failed for user %d: %v", entries[0].UserID, err)
 	}
 
 	limit := len(entries)
@@ -699,6 +758,114 @@ func calculateEndDateTime(start time.Time, hours int) time.Time {
 func (u *fastingUsecase) refreshStaleCurrentStreaks() error {
 	now := time.Now().In(config.Location)
 	return u.scheduleRepo.ResetStaleCurrentStreaks(now.Format("2006-01-02"), formatStoredTime(now))
+}
+
+func (u *fastingUsecase) evaluateAndAwardBadges(userID int64, record *domain.FastingRecord) ([]domain.Badge, error) {
+	if u.badgeRepo == nil {
+		return nil, nil
+	}
+
+	stats, err := u.scheduleRepo.FindFastingStatsByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	earned, err := u.badgeRepo.EarnedBadges(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	newKeys := domain.EvaluateBadges(stats, record, earned)
+	if len(newKeys) == 0 {
+		return nil, nil
+	}
+	if err := u.badgeRepo.AwardBadges(userID, newKeys); err != nil {
+		return nil, err
+	}
+
+	badges := make([]domain.Badge, 0, len(newKeys))
+	for _, key := range newKeys {
+		if badge, ok := domain.GetBadge(key); ok {
+			badges = append(badges, badge)
+		}
+	}
+	return badges, nil
+}
+
+func (u *fastingUsecase) awardBadges(userID int64, keys []domain.BadgeKey) error {
+	if u.badgeRepo == nil || len(keys) == 0 {
+		return nil
+	}
+	return u.badgeRepo.AwardBadges(userID, keys)
+}
+
+func (u *fastingUsecase) earnedBadges(userID int64) (map[domain.BadgeKey]struct{}, error) {
+	if u.badgeRepo == nil {
+		return map[domain.BadgeKey]struct{}{}, nil
+	}
+	return u.badgeRepo.EarnedBadges(userID)
+}
+
+func (u *fastingUsecase) badgeShelf(userID int64) string {
+	earned, err := u.earnedBadges(userID)
+	if err != nil || len(earned) == 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, len(earned))
+	for _, badge := range domain.Badges() {
+		if _, ok := earned[badge.Key]; ok {
+			parts = append(parts, badge.Emoji)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func formatBadgeUnlock(badges []domain.Badge) string {
+	if len(badges) == 0 {
+		return ""
+	}
+	if len(badges) == 1 {
+		badge := badges[0]
+		return fmt.Sprintf("🎖️ *Badge baru terbuka!*\n%s *%s* — %s\n\nCek semua badge: /badge", badge.Emoji, badge.Name, badge.Description)
+	}
+
+	lines := []string{"🎖️ *Badge baru terbuka!*"}
+	for _, badge := range badges {
+		lines = append(lines, fmt.Sprintf("• %s *%s*", badge.Emoji, badge.Name))
+	}
+	lines = append(lines, "", "Cek semua badge: /badge")
+	return strings.Join(lines, "\n")
+}
+
+func formatBadgeCollection(stats *domain.FastingStats, earned map[domain.BadgeKey]struct{}) string {
+	progresses := domain.BadgeProgresses(stats, earned)
+	earnedLines := make([]string, 0, len(progresses))
+	lockedLines := make([]string, 0, len(progresses))
+
+	for _, progress := range progresses {
+		line := fmt.Sprintf("%s *%s*", progress.Badge.Emoji, progress.Badge.Name)
+		if progress.Earned {
+			earnedLines = append(earnedLines, "✅ "+line)
+			continue
+		}
+
+		lockedLine := "🔒 " + line
+		if progress.Target > 0 {
+			lockedLine += fmt.Sprintf(" (Progress: %d/%d)", progress.Current, progress.Target)
+		}
+		lockedLines = append(lockedLines, lockedLine)
+	}
+
+	message := "🏆 *Koleksi Badge*\n\n"
+	if len(earnedLines) == 0 {
+		message += "Belum ada badge terbuka. Selesaikan sesi puasa pertama untuk mulai mengumpulkan.\n"
+	} else {
+		message += strings.Join(earnedLines, "\n") + "\n"
+	}
+	if len(lockedLines) > 0 {
+		message += "\n🔒 *Terkunci:*\n" + strings.Join(lockedLines, "\n")
+	}
+	return message
 }
 
 func formatStoredTime(t time.Time) string {

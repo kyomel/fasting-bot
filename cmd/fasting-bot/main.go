@@ -35,8 +35,9 @@ func main() {
 	userRepo := persistence.NewUserRepository(db.Conn)
 	scheduleRepo := persistence.NewScheduleRepository(db.Conn)
 	notificationRepo := persistence.NewNotificationRepository(db.Conn)
+	badgeRepo := persistence.NewBadgeRepository(db.Conn)
 
-	fastingUsecase := usecase.NewFastingUsecase(userRepo, scheduleRepo, notificationRepo)
+	fastingUsecase := usecase.NewFastingUsecase(userRepo, scheduleRepo, notificationRepo, badgeRepo)
 
 	waClient, err := waInfra.NewClient()
 	if err != nil {

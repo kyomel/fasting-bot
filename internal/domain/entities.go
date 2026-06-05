@@ -54,6 +54,7 @@ type FastingStats struct {
 }
 
 type FastingLeaderboardEntry struct {
+	UserID            int64
 	Name              string
 	CurrentStreakDays int
 	TotalMinutes      int

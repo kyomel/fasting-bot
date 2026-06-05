@@ -282,7 +282,7 @@ func (r *ScheduleRepositorySQLite) FindFastingStatsByUserID(userID int64) (*doma
 
 func (r *ScheduleRepositorySQLite) FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error) {
 	rows, err := r.db.Query(`
-		SELECT COALESCE(
+		SELECT u.id, COALESCE(
 			NULLIF(u.name, ''),
 			CASE
 				WHEN length(u.phone) >= 6 THEN substr(u.phone, 1, 3) || '***' || substr(u.phone, -2)
@@ -291,7 +291,7 @@ func (r *ScheduleRepositorySQLite) FindFastingLeaderboard() ([]domain.FastingLea
 		), s.current_streak_days, s.total_minutes, s.total_sessions
 		FROM user_fasting_stats s
 		JOIN users u ON u.id = s.user_id
-		ORDER BY s.total_minutes DESC, s.current_streak_days DESC, s.total_sessions DESC
+		ORDER BY s.total_minutes DESC, s.current_streak_days DESC, s.total_sessions DESC, u.id ASC
 	`)
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func (r *ScheduleRepositorySQLite) FindFastingLeaderboard() ([]domain.FastingLea
 	var entries []domain.FastingLeaderboardEntry
 	for rows.Next() {
 		var entry domain.FastingLeaderboardEntry
-		if err := rows.Scan(&entry.Name, &entry.CurrentStreakDays, &entry.TotalMinutes, &entry.TotalSessions); err != nil {
+		if err := rows.Scan(&entry.UserID, &entry.Name, &entry.CurrentStreakDays, &entry.TotalMinutes, &entry.TotalSessions); err != nil {
 			continue
 		}
 		entries = append(entries, entry)

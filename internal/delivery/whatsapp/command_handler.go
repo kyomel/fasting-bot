@@ -194,6 +194,11 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 			return h.usecase.GetStats(phone)
 		})
 
+	case "/badge", "/badges":
+		return h.callUsecase(phone, "GetBadges", func() (string, error) {
+			return h.usecase.GetBadges(phone)
+		})
+
 	case "/leaderboard":
 		return h.callUsecase(phone, "GetLeaderboard", func() (string, error) {
 			return h.usecase.GetLeaderboard()
@@ -237,6 +242,7 @@ var errorLabels = map[string]string{
 	"BreakFastingAt": "membuka puasa",
 	"DeleteSchedule": "menghapus jadwal",
 	"GetStats":       "mengambil stats",
+	"GetBadges":      "mengambil badge",
 	"GetLeaderboard": "mengambil leaderboard",
 }
 
@@ -335,6 +341,7 @@ func getHelpText() string {
 /motivasi — Suntikan semangat sesuai fase puasamu
 /batalkan — Batalkan jadwal puasa aktif
 /stats — Statistik puasa pribadi
+/badge — Koleksi badge & achievement
 /leaderboard — Klasemen puasa grup
 /bantuan — Tampilkan bantuan ini
 /info — Info bot

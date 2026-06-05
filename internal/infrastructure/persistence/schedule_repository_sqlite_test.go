@@ -168,6 +168,33 @@ func TestFindUsersNearTargetNotificationDedupsWithinCurrentFast(t *testing.T) {
 	}
 }
 
+func TestFindFastingLeaderboardUsesDeterministicTieBreaker(t *testing.T) {
+	db := newLeaderboardTestDB(t)
+	repo := &ScheduleRepositorySQLite{db: db}
+
+	if _, err := db.Exec(`
+		INSERT INTO users (id, phone, name) VALUES
+			(2, '+6202', 'Bima'),
+			(1, '+6201', 'Ari');
+		INSERT INTO user_fasting_stats (user_id, total_sessions, total_minutes, current_streak_days) VALUES
+			(2, 10, 9600, 7),
+			(1, 10, 9600, 7);
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := repo.FindFastingLeaderboard()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("FindFastingLeaderboard() returned %d entries, want 2", len(entries))
+	}
+	if entries[0].UserID != 1 || entries[1].UserID != 2 {
+		t.Fatalf("FindFastingLeaderboard() = %#v, want tie broken by user id ASC", entries)
+	}
+}
+
 func mustParseStoredDateTime(t *testing.T, value string) time.Time {
 	t.Helper()
 	parsed, err := time.Parse(storeDateTimeLayout, value)
@@ -249,6 +276,35 @@ func newNotificationTargetTestDB(t *testing.T) *sql.DB {
 			user_id INTEGER NOT NULL,
 			notification_type TEXT NOT NULL,
 			sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+	}
+	for _, query := range queries {
+		if _, err := db.Exec(query); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return db
+}
+
+func newLeaderboardTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	queries := []string{
+		`CREATE TABLE users (
+			id INTEGER PRIMARY KEY,
+			phone TEXT NOT NULL,
+			name TEXT
+		);`,
+		`CREATE TABLE user_fasting_stats (
+			user_id INTEGER PRIMARY KEY,
+			total_sessions INTEGER NOT NULL DEFAULT 0,
+			total_minutes INTEGER NOT NULL DEFAULT 0,
+			current_streak_days INTEGER NOT NULL DEFAULT 0
 		);`,
 	}
 	for _, query := range queries {

@@ -34,6 +34,11 @@ type NotificationRepository interface {
 	LogNotification(userID int64, notificationType string) error
 }
 
+type BadgeRepository interface {
+	EarnedBadges(userID int64) (map[domain.BadgeKey]struct{}, error)
+	AwardBadges(userID int64, keys []domain.BadgeKey) error
+}
+
 type NotificationTarget struct {
 	UserID            int64
 	JID               string

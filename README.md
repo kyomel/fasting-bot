@@ -8,7 +8,7 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 - 📱 Bisa digunakan di grup
 - 🗄️ Database SQLite (ringan, tanpa server)
 - 📋 4 perintah utama: `/set-puasa`, `/jadwalkan`, `/buka`, `/buka <tanggal> <jam>`
-- 📋 Pendukung: `/daftar`, `/list-puasa`, `/status`, `/batalkan`, `/stats`, `/leaderboard`
+- 📋 Pendukung: `/daftar`, `/list-puasa`, `/status`, `/batalkan`, `/stats`, `/badge`, `/leaderboard`
 
 ## Struktur Project (Clean Architecture)
 
@@ -151,6 +151,7 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 | `/buka <tanggal> <jam>` | Catat buka puasa di waktu yang sudah lewat (kalau lupa kirim `/buka`) | `/buka 23-05-2026 18:30` |
 | `/batalkan` | Batalkan jadwal puasa aktif. Setelah dibatalkan, `/status` akan menampilkan belum ada jadwal fasting | `/batalkan` |
 | `/stats` | Lihat statistik hasil buka puasa pribadi | `/stats` |
+| `/badge` | Lihat koleksi badge dan achievement puasa | `/badge` |
 | `/leaderboard` | Lihat klasemen puasa berdasarkan total waktu puasa | `/leaderboard` |
 | `/bantuan` | Tampilkan bantuan | `/bantuan` |
 | `/info` | Info bot | `/info` |
