@@ -517,7 +517,7 @@ func (r *ScheduleRepositorySQLite) FindUsersWithActiveFasting(currentDateTime st
 
 func (r *ScheduleRepositorySQLite) FindUsersWithExpiredStreaks(currentDateTime string) ([]repository.ExpiredStreakTarget, error) {
 	rows, err := r.db.Query(`
-		SELECT ufs.user_id, COALESCE(NULLIF(u.name, ''), u.phone), ufs.current_streak_days
+		SELECT ufs.user_id, u.jid, COALESCE(NULLIF(u.name, ''), u.phone), ufs.current_streak_days
 		FROM user_fasting_stats ufs
 		JOIN users u ON u.id = ufs.user_id
 		WHERE ufs.current_streak_days > 0
@@ -537,7 +537,7 @@ func (r *ScheduleRepositorySQLite) FindUsersWithExpiredStreaks(currentDateTime s
 	var targets []repository.ExpiredStreakTarget
 	for rows.Next() {
 		var t repository.ExpiredStreakTarget
-		if err := rows.Scan(&t.UserID, &t.Name, &t.CurrentStreakDays); err != nil {
+		if err := rows.Scan(&t.UserID, &t.JID, &t.Name, &t.CurrentStreakDays); err != nil {
 			return nil, err
 		}
 		targets = append(targets, t)

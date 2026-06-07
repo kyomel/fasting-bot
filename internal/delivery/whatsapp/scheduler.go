@@ -306,13 +306,15 @@ func (s *Scheduler) sendGroupAfternoonUpdate() {
 		return
 	}
 
-	var msg string
+	// Skip the group message entirely when nobody is fasting — the daily
+	// "no fasters" tip became noise once groups grew past a few users and
+	// started delivering the same tip every afternoon to the same people.
 	if len(activeFasters) == 0 {
-		msg = s.buildNoFastersMessage()
-	} else {
-		msg = s.buildActiveFastersMessage(activeFasters, currentDateTime)
+		s.log.Info("⏭️ skipped group afternoon update (no active fasters)")
+		return
 	}
 
+	msg := s.buildActiveFastersMessage(activeFasters, currentDateTime)
 	if err := s.notifier.SendToGroup(msg); err != nil {
 		s.log.Warn("failed to send group afternoon update", "error", err)
 		return
@@ -400,7 +402,10 @@ func (s *Scheduler) checkBrokenStreaks() {
 			t.Name, t.CurrentStreakDays,
 		)
 
-		if err := s.notifier.SendToGroup(msg); err != nil {
+		// Send to user DM, not the group. Streak reset is a personal moment
+		// and announcing it to the whole group created social-judgment noise
+		// that didn't match the health-focused, secular framing of the bot.
+		if err := s.notifier.Send(t.JID, msg); err != nil {
 			s.log.Warn("failed to send streak broken notification", "user", t.Name, "error", err)
 			continue
 		}

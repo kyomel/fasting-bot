@@ -4,7 +4,6 @@ import "fmt"
 
 const (
 	NotificationTypePhaseFatBurning = "phase_fat_burning"
-	NotificationTypePhaseKetosis    = "phase_ketosis"
 	NotificationTypePhaseDeepFast   = "phase_deep_fast"
 	NotificationTypeNearTarget      = "near_target"
 )
@@ -15,13 +14,21 @@ type ProactivePhaseNotification struct {
 	PhaseKey          string
 }
 
+// ProactivePhaseNotifications fires metabolic-phase nudges during an active fast.
+// We skip the 18h (Ketosis) entry on purpose: for most IF schedules (12-23h) it
+// would fire too close to the 12h (Fat Burning) nudge to add value, and for
+// longer water/prolonged fasts the 24h (Deep Fast) nudge is the meaningful
+// signal. Net effect: IF users see 1 phase nudge; water/prolonged users see 2.
 var ProactivePhaseNotifications = []ProactivePhaseNotification{
 	{NotificationType: NotificationTypePhaseFatBurning, TriggerAfterHours: 12, PhaseKey: "fat_burning"},
-	{NotificationType: NotificationTypePhaseKetosis, TriggerAfterHours: 18, PhaseKey: "ketosis"},
 	{NotificationType: NotificationTypePhaseDeepFast, TriggerAfterHours: 24, PhaseKey: "deep_fast"},
 }
 
-var HydrationReminderHours = []int{8, 16, 20, 28, 32, 36, 40, 44, 48}
+// HydrationReminderHours is intentionally sparse (4 slots over a 48h window).
+// Dense reminders (originally 9 slots starting at 8h) became noise for IF users
+// who already know to drink water. The 16h/24h/36h/48h cadence still hits the
+// medically-meaningful points without spamming.
+var HydrationReminderHours = []int{16, 24, 36, 48}
 
 func HydrationNotificationType(hours int) string {
 	return fmt.Sprintf("hydration_%dh", hours)

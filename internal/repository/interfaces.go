@@ -52,6 +52,7 @@ type NotificationTarget struct {
 
 type ExpiredStreakTarget struct {
 	UserID            int64
+	JID               string
 	Name              string
 	CurrentStreakDays int
 }
