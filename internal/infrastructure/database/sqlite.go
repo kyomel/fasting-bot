@@ -23,9 +23,13 @@ func New() (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Connection pool — SQLite supports max 1 writer but multiple readers in WAL mode
-	conn.SetMaxOpenConns(1)
-	conn.SetMaxIdleConns(1)
+	// Connection pool — SQLite with WAL mode supports 1 writer but multiple
+	// concurrent readers. We allow 4 open connections so scheduler reads
+	// don't serialize with command handler reads. Writes are still serialized
+	// by SQLite's internal locking, with _busy_timeout=5000 giving them room
+	// to wait for the lock to release.
+	conn.SetMaxOpenConns(4)
+	conn.SetMaxIdleConns(4)
 
 	if err := conn.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)

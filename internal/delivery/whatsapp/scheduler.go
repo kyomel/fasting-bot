@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ type Scheduler struct {
 	scheduleRepo repository.ScheduleRepository
 	notifRepo    repository.NotificationRepository
 	notifier     *whatsapp.Notifier
+	log          *slog.Logger
 }
 
 func NewScheduler(
@@ -29,15 +31,24 @@ func NewScheduler(
 		scheduleRepo: scheduleRepo,
 		notifRepo:    notifRepo,
 		notifier:     notifier,
+		log:          slog.Default().With("component", "scheduler"),
 	}
 }
 
 func (s *Scheduler) Start() {
+	// Cron splits:
+	//   - start/end notifications: every minute (precise boundary)
+	//   - proactive motivations (phase/hydration/near target): every 5 minutes
+	//     to cut DB load without losing meaningful precision (windows are 1h+ wide)
 	s.cron = cron.New(
 		cron.WithLocation(config.Location),
-		cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)),
+		cron.WithChain(
+			cron.SkipIfStillRunning(cron.DefaultLogger),
+			cron.Recover(cron.DefaultLogger),
+		),
 	)
-	s.cron.AddFunc("* * * * *", s.checkAndNotify)
+	s.cron.AddFunc("* * * * *", s.checkStartEnd)
+	s.cron.AddFunc("*/5 * * * *", s.checkProactiveMotivations)
 	s.cron.AddFunc("0 3 */3 * *", s.cleanupFastingHistory)
 	s.cron.AddFunc("0 15 * * *", s.sendGroupAfternoonUpdate)
 	s.cron.AddFunc("0 */4 * * *", s.checkBrokenStreaks)
@@ -52,7 +63,9 @@ func (s *Scheduler) Stop() {
 
 // --- Personal notifications: start & end ---
 
-func (s *Scheduler) checkAndNotify() {
+// checkStartEnd runs at 1-minute precision: start/end are fasting boundaries
+// that should fire within a minute of the actual scheduled time.
+func (s *Scheduler) checkStartEnd() {
 	now := time.Now().In(config.Location)
 	currentTime := now.Format("15:04")
 	currentDate := now.Format("2006-01-02")
@@ -60,13 +73,21 @@ func (s *Scheduler) checkAndNotify() {
 
 	s.notifyStart(currentTime, currentDate, currentDateTime)
 	s.notifyEnd(currentTime, currentDate, currentDateTime, now)
+}
+
+// checkProactiveMotivations runs every 5 minutes: phase milestones, near-target
+// nudges, and hydration reminders all use 1-hour+ windows so 5-min cadence is
+// indistinguishable from 1-min cadence for the user, while cutting DB load ~5x.
+func (s *Scheduler) checkProactiveMotivations() {
+	now := time.Now().In(config.Location)
+	currentDateTime := now.Format("2006-01-02 15:04")
 	s.notifyProactiveMotivations(currentDateTime, now)
 }
 
 func (s *Scheduler) notifyStart(currentTime, currentDate, currentDateTime string) {
 	targets, err := s.scheduleRepo.FindUsersToNotifyStart(currentTime, currentDate, currentDateTime)
 	if err != nil {
-		fmt.Printf("❌ Scheduler error (start): %v\n", err)
+		s.log.Warn("scheduler error (start)", "error", err)
 		return
 	}
 
@@ -94,14 +115,14 @@ func (s *Scheduler) notifyStart(currentTime, currentDate, currentDateTime string
 			closing,
 		)
 		if err := s.notifier.Send(t.JID, msg); err != nil {
-			fmt.Printf("❌ Failed to send start notification: %v\n", err)
+			s.log.Warn("failed to send start notification", "user", t.Name, "error", err)
 			continue
 		}
 		if err := s.notifRepo.LogNotification(t.UserID, "start"); err != nil {
-			fmt.Printf("❌ Failed to log start notification: %v\n", err)
+			s.log.Warn("failed to log start notification", "user", t.Name, "error", err)
 			continue
 		}
-		fmt.Println("📨 Sent start notification")
+		s.log.Info("📨 sent start notification", "user", t.Name)
 	}
 }
 
@@ -117,7 +138,7 @@ func (s *Scheduler) notifyPhaseMilestones(currentDateTime string) {
 	for _, trigger := range domain.ProactivePhaseNotifications {
 		targets, err := s.scheduleRepo.FindUsersForElapsedNotification(trigger.NotificationType, trigger.TriggerAfterHours, currentDateTime)
 		if err != nil {
-			fmt.Printf("❌ Scheduler error (%s): %v\n", trigger.NotificationType, err)
+			s.log.Warn("scheduler error (phase)", "type", trigger.NotificationType, "error", err)
 			continue
 		}
 
@@ -131,7 +152,7 @@ func (s *Scheduler) notifyPhaseMilestones(currentDateTime string) {
 func (s *Scheduler) notifyNearTargetMotivations(currentDateTime string) {
 	targets, err := s.scheduleRepo.FindUsersNearTargetNotification(domain.NotificationTypeNearTarget, currentDateTime)
 	if err != nil {
-		fmt.Printf("❌ Scheduler error (near target): %v\n", err)
+		s.log.Warn("scheduler error (near target)", "error", err)
 		return
 	}
 
@@ -146,7 +167,7 @@ func (s *Scheduler) notifyHydrationReminders(currentDateTime string, now time.Ti
 		notificationType := domain.HydrationNotificationType(hour)
 		targets, err := s.scheduleRepo.FindUsersForElapsedNotification(notificationType, hour, currentDateTime)
 		if err != nil {
-			fmt.Printf("❌ Scheduler error (%s): %v\n", notificationType, err)
+			s.log.Warn("scheduler error (hydration)", "type", notificationType, "error", err)
 			continue
 		}
 
@@ -164,14 +185,14 @@ func (s *Scheduler) notifyHydrationReminders(currentDateTime string, now time.Ti
 
 func (s *Scheduler) sendAndLog(target repository.NotificationTarget, notificationType, msg string) {
 	if err := s.notifier.Send(target.JID, msg); err != nil {
-		fmt.Printf("❌ Failed to send %s notification to %s: %v\n", notificationType, target.Name, err)
+		s.log.Warn("failed to send notification", "type", notificationType, "user", target.Name, "error", err)
 		return
 	}
 	if err := s.notifRepo.LogNotification(target.UserID, notificationType); err != nil {
-		fmt.Printf("❌ Failed to log %s notification for %s: %v\n", notificationType, target.Name, err)
+		s.log.Warn("failed to log notification", "type", notificationType, "user", target.Name, "error", err)
 		return
 	}
-	fmt.Printf("📨 Sent %s notification to %s\n", notificationType, target.Name)
+	s.log.Info("📨 sent notification", "type", notificationType, "user", target.Name)
 }
 
 func buildPhaseMilestoneMessage(t repository.NotificationTarget, trigger domain.ProactivePhaseNotification, currentDateTime string) string {
@@ -236,7 +257,7 @@ func buildHydrationReminderMessage(t repository.NotificationTarget, elapsedHours
 func (s *Scheduler) notifyEnd(currentTime, currentDate, currentDateTime string, now time.Time) {
 	targets, err := s.scheduleRepo.FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime)
 	if err != nil {
-		fmt.Printf("❌ Scheduler error (end): %v\n", err)
+		s.log.Warn("scheduler error (end)", "error", err)
 		return
 	}
 
@@ -262,14 +283,14 @@ func (s *Scheduler) notifyEnd(currentTime, currentDate, currentDateTime string, 
 			todayDate,
 		)
 		if err := s.notifier.Send(t.JID, msg); err != nil {
-			fmt.Printf("❌ Failed to send end notification: %v\n", err)
+			s.log.Warn("failed to send end notification", "user", t.Name, "error", err)
 			continue
 		}
 		if err := s.notifRepo.LogNotification(t.UserID, "end"); err != nil {
-			fmt.Printf("❌ Failed to log end notification: %v\n", err)
+			s.log.Warn("failed to log end notification", "user", t.Name, "error", err)
 			continue
 		}
-		fmt.Println("📨 Sent end notification")
+		s.log.Info("📨 sent end notification", "user", t.Name)
 	}
 }
 
@@ -281,7 +302,7 @@ func (s *Scheduler) sendGroupAfternoonUpdate() {
 
 	activeFasters, err := s.scheduleRepo.FindUsersWithActiveFasting(currentDateTime)
 	if err != nil {
-		fmt.Printf("❌ Scheduler error (afternoon update): %v\n", err)
+		s.log.Warn("scheduler error (afternoon update)", "error", err)
 		return
 	}
 
@@ -293,10 +314,10 @@ func (s *Scheduler) sendGroupAfternoonUpdate() {
 	}
 
 	if err := s.notifier.SendToGroup(msg); err != nil {
-		fmt.Printf("❌ Failed to send group afternoon update: %v\n", err)
+		s.log.Warn("failed to send group afternoon update", "error", err)
 		return
 	}
-	fmt.Println("📨 Sent group afternoon update")
+	s.log.Info("📨 sent group afternoon update", "active_fasters", len(activeFasters))
 }
 
 func (s *Scheduler) buildNoFastersMessage() string {
@@ -366,7 +387,7 @@ func (s *Scheduler) checkBrokenStreaks() {
 
 	targets, err := s.scheduleRepo.FindUsersWithExpiredStreaks(currentDateTime)
 	if err != nil {
-		fmt.Printf("❌ Scheduler error (broken streaks): %v\n", err)
+		s.log.Warn("scheduler error (broken streaks)", "error", err)
 		return
 	}
 
@@ -380,16 +401,16 @@ func (s *Scheduler) checkBrokenStreaks() {
 		)
 
 		if err := s.notifier.SendToGroup(msg); err != nil {
-			fmt.Printf("❌ Failed to send streak broken notification: %v\n", err)
+			s.log.Warn("failed to send streak broken notification", "user", t.Name, "error", err)
 			continue
 		}
 
 		if err := s.scheduleRepo.ResetStreakByUserID(t.UserID); err != nil {
-			fmt.Printf("❌ Failed to reset streak for user %d: %v\n", t.UserID, err)
+			s.log.Warn("failed to reset streak", "user", t.Name, "user_id", t.UserID, "error", err)
 			continue
 		}
 
-		fmt.Printf("📨 Sent streak broken notification for %s\n", t.Name)
+		s.log.Info("📨 sent streak broken notification", "user", t.Name)
 	}
 }
 
@@ -399,11 +420,11 @@ func (s *Scheduler) cleanupFastingHistory() {
 	cutoff := time.Now().In(config.Location).AddDate(0, 0, -3).Format("2006-01-02 15:04:05")
 	deleted, err := s.scheduleRepo.CleanupOldFastingRecords(cutoff)
 	if err != nil {
-		fmt.Printf("❌ Failed to cleanup fasting history: %v\n", err)
+		s.log.Warn("failed to cleanup fasting history", "error", err)
 		return
 	}
 	if deleted > 0 {
-		fmt.Printf("🧹 Cleaned up %d old fasting history records\n", deleted)
+		s.log.Info("🧹 cleaned up old fasting history records", "deleted", deleted)
 	}
 }
 
