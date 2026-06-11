@@ -137,7 +137,7 @@ func TestFindUsersForElapsedNotificationDedupsWithinCurrentFast(t *testing.T) {
 	}
 }
 
-func TestFindUsersNearTargetNotificationDedupsWithinCurrentFast(t *testing.T) {
+func TestFindUsersBeforeTargetNotificationDedupsWithinCurrentFast(t *testing.T) {
 	db := newNotificationTargetTestDB(t)
 	repo := &ScheduleRepositorySQLite{db: db}
 
@@ -156,15 +156,39 @@ func TestFindUsersNearTargetNotificationDedupsWithinCurrentFast(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	targets, err := repo.FindUsersNearTargetNotification(domain.NotificationTypeNearTarget, "2026-06-01 16:30")
+	targets, err := repo.FindUsersBeforeTargetNotification(domain.PreBreakNotificationType(2), 2, "2026-06-01 16:30")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(targets) != 1 {
-		t.Fatalf("FindUsersNearTargetNotification() returned %d targets, want 1: %#v", len(targets), targets)
+		t.Fatalf("FindUsersBeforeTargetNotification() returned %d targets, want 1: %#v", len(targets), targets)
 	}
 	if targets[0].UserID != 1 {
 		t.Fatalf("unexpected target: %#v", targets[0])
+	}
+}
+
+func TestFindUsersBeforeTargetNotificationRespectsLeadHours(t *testing.T) {
+	db := newNotificationTargetTestDB(t)
+	repo := &ScheduleRepositorySQLite{db: db}
+
+	if _, err := db.Exec(`
+		INSERT INTO users (id, phone, name, jid) VALUES
+			(1, '+6201', 'Ari', 'ari@s.whatsapp.net'),
+			(2, '+6202', 'Bima', 'bima@s.whatsapp.net');
+		INSERT INTO fasting_schedules (user_id, fast_start, fast_end, fasting_type_name, is_active) VALUES
+			(1, '2026-06-01 00:00', '2026-06-02 00:00', 'Water Fasting 24 jam', 1),
+			(2, '2026-06-01 00:00', '2026-06-01 18:00', 'IF 18:6', 1);
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	targets, err := repo.FindUsersBeforeTargetNotification(domain.PreBreakNotificationType(3), 3, "2026-06-01 21:30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 1 || targets[0].UserID != 1 {
+		t.Fatalf("FindUsersBeforeTargetNotification() = %#v, want only 24h water fast", targets)
 	}
 }
 

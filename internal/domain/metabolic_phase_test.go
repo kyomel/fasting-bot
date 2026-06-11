@@ -39,3 +39,68 @@ func TestMetabolicPhaseNextPhase(t *testing.T) {
 		t.Fatal("deep_fast.NextPhase() should be false")
 	}
 }
+
+func TestSmartNotificationPlanForFastingTypes(t *testing.T) {
+	tests := map[string]struct {
+		name          string
+		plannedHours  int
+		wantHydration []int
+		wantDrySafety []int
+		wantPreBreak  int
+	}{
+		"short IF only gets final reminder": {
+			name:          "IF 12:12",
+			plannedHours:  12,
+			wantHydration: nil,
+			wantPreBreak:  1,
+		},
+		"IF 16 gets one hydration check": {
+			name:          "IF 16:8",
+			plannedHours:  16,
+			wantHydration: []int{8},
+			wantPreBreak:  2,
+		},
+		"OMAD stays sparse": {
+			name:          "OMAD-2",
+			plannedHours:  23,
+			wantHydration: []int{12},
+			wantPreBreak:  2,
+		},
+		"water fasting gets electrolyte-spaced checks": {
+			name:          "Water Fasting 36 jam",
+			plannedHours:  36,
+			wantHydration: []int{16, 24},
+			wantPreBreak:  3,
+		},
+		"dry fasting has safety checks without hydration": {
+			name:          "Dry Fasting 24 jam",
+			plannedHours:  24,
+			wantHydration: nil,
+			wantDrySafety: []int{8, 16},
+			wantPreBreak:  3,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := SmartNotificationPlanFor(tt.name, tt.plannedHours)
+			assertIntSlice(t, got.HydrationReminderHours, tt.wantHydration)
+			assertIntSlice(t, got.DrySafetyReminderHours, tt.wantDrySafety)
+			if got.PreBreakLeadHours != tt.wantPreBreak {
+				t.Fatalf("PreBreakLeadHours = %d, want %d", got.PreBreakLeadHours, tt.wantPreBreak)
+			}
+		})
+	}
+}
+
+func assertIntSlice(t *testing.T, got, want []int) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("slice = %#v, want %#v", got, want)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("slice = %#v, want %#v", got, want)
+		}
+	}
+}

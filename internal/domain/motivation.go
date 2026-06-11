@@ -1,6 +1,10 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 const (
 	NotificationTypePhaseFatBurning = "phase_fat_burning"
@@ -24,14 +28,139 @@ var ProactivePhaseNotifications = []ProactivePhaseNotification{
 	{NotificationType: NotificationTypePhaseDeepFast, TriggerAfterHours: 24, PhaseKey: "deep_fast"},
 }
 
-// HydrationReminderHours is intentionally sparse (4 slots over a 48h window).
-// Dense reminders (originally 9 slots starting at 8h) became noise for IF users
-// who already know to drink water. The 16h/24h/36h/48h cadence still hits the
-// medically-meaningful points without spamming.
-var HydrationReminderHours = []int{16, 24, 36, 48}
+type SmartNotificationPlan struct {
+	HydrationReminderHours []int
+	DrySafetyReminderHours []int
+	PreBreakLeadHours      int
+}
+
+// HydrationReminderHours returns the union of elapsed-hour hydration checks the
+// scheduler needs to query. Each target is still filtered through its own smart
+// plan before sending, so short IF schedules do not receive long-fast nudges.
+func HydrationReminderHours() []int {
+	return []int{8, 12, 16, 18, 24, 30, 32, 48, 72, 96, 120, 144, 168}
+}
+
+func DrySafetyReminderHours() []int {
+	return []int{4, 8, 12, 16, 24}
+}
+
+func PreBreakLeadHours() []int {
+	return []int{1, 2, 3, 4, 6, 8}
+}
 
 func HydrationNotificationType(hours int) string {
 	return fmt.Sprintf("hydration_%dh", hours)
+}
+
+func DrySafetyNotificationType(hours int) string {
+	return fmt.Sprintf("dry_safety_%dh", hours)
+}
+
+func PreBreakNotificationType(leadHours int) string {
+	return fmt.Sprintf("pre_break_%dh", leadHours)
+}
+
+func SmartNotificationPlanFor(fastingTypeName string, plannedHours int) SmartNotificationPlan {
+	if plannedHours < 0 {
+		plannedHours = 0
+	}
+
+	leadHours := preBreakLeadHoursFor(plannedHours)
+	if isDryFastingType(fastingTypeName) {
+		return SmartNotificationPlan{
+			DrySafetyReminderHours: filteredReminderHours(drySafetyReminderHoursFor(plannedHours), plannedHours, leadHours),
+			PreBreakLeadHours:      leadHours,
+		}
+	}
+
+	return SmartNotificationPlan{
+		HydrationReminderHours: filteredReminderHours(hydrationReminderHoursFor(plannedHours), plannedHours, leadHours),
+		PreBreakLeadHours:      leadHours,
+	}
+}
+
+func preBreakLeadHoursFor(plannedHours int) int {
+	switch {
+	case plannedHours <= 14:
+		return 1
+	case plannedHours <= 23:
+		return 2
+	case plannedHours <= 36:
+		return 3
+	case plannedHours <= 48:
+		return 4
+	case plannedHours <= 72:
+		return 6
+	default:
+		return 8
+	}
+}
+
+func hydrationReminderHoursFor(plannedHours int) []int {
+	switch {
+	case plannedHours <= 14:
+		return nil
+	case plannedHours <= 18:
+		return []int{8}
+	case plannedHours <= 23:
+		return []int{12}
+	case plannedHours <= 24:
+		return []int{12, 18}
+	case plannedHours <= 36:
+		return []int{16, 24}
+	case plannedHours <= 48:
+		return []int{16, 30}
+	case plannedHours <= 72:
+		return []int{16, 32, 48}
+	default:
+		hours := []int{16, 32, 48}
+		for hour := 72; hour < plannedHours; hour += 24 {
+			hours = append(hours, hour)
+		}
+		return hours
+	}
+}
+
+func drySafetyReminderHoursFor(plannedHours int) []int {
+	switch {
+	case plannedHours <= 6:
+		return nil
+	case plannedHours <= 12:
+		return []int{4}
+	case plannedHours <= 18:
+		return []int{8}
+	case plannedHours <= 24:
+		return []int{8, 16}
+	default:
+		return []int{8, 16, 24}
+	}
+}
+
+func filteredReminderHours(hours []int, plannedHours, preBreakLeadHours int) []int {
+	if len(hours) == 0 || plannedHours <= 0 {
+		return nil
+	}
+
+	latestUsefulHour := plannedHours - preBreakLeadHours - 1
+	seen := map[int]struct{}{}
+	filtered := make([]int, 0, len(hours))
+	for _, hour := range hours {
+		if hour <= 0 || hour > latestUsefulHour {
+			continue
+		}
+		if _, ok := seen[hour]; ok {
+			continue
+		}
+		seen[hour] = struct{}{}
+		filtered = append(filtered, hour)
+	}
+	sort.Ints(filtered)
+	return filtered
+}
+
+func isDryFastingType(name string) bool {
+	return strings.Contains(strings.ToLower(name), "dry fasting")
 }
 
 var motivationByPhase = map[string][]string{

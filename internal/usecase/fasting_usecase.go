@@ -664,7 +664,7 @@ func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, start
 			"%s\n\n"+
 			"Kamu akan dapat notifikasi otomatis saat mulai & saat waktunya buka.\n"+
 			"_Mau ganti? Tinggal jalankan /set-puasa atau /jadwalkan lagi — jadwal lama otomatis dimatikan._\n\n"+
-			"Niat dikunci — tinggal jalanin. Let's go! 🚀",
+			"Rencana siap — tinggal jalanin. Let's go! 🚀",
 		fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime),
 		plannedHours, scheduleTeaserForDuration(plannedHours, fastingTypeName),
 	), nil

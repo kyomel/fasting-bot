@@ -132,6 +132,7 @@ func (s *Scheduler) notifyProactiveMotivations(currentDateTime string, now time.
 	s.notifyPhaseMilestones(currentDateTime)
 	s.notifyNearTargetMotivations(currentDateTime)
 	s.notifyHydrationReminders(currentDateTime, now)
+	s.notifyDrySafetyReminders(currentDateTime)
 }
 
 func (s *Scheduler) notifyPhaseMilestones(currentDateTime string) {
@@ -150,20 +151,29 @@ func (s *Scheduler) notifyPhaseMilestones(currentDateTime string) {
 }
 
 func (s *Scheduler) notifyNearTargetMotivations(currentDateTime string) {
-	targets, err := s.scheduleRepo.FindUsersNearTargetNotification(domain.NotificationTypeNearTarget, currentDateTime)
-	if err != nil {
-		s.log.Warn("scheduler error (near target)", "error", err)
-		return
-	}
+	for _, leadHours := range domain.PreBreakLeadHours() {
+		notificationType := domain.PreBreakNotificationType(leadHours)
+		targets, err := s.scheduleRepo.FindUsersBeforeTargetNotification(notificationType, leadHours, currentDateTime)
+		if err != nil {
+			s.log.Warn("scheduler error (near target)", "lead_hours", leadHours, "error", err)
+			continue
+		}
 
-	for _, t := range targets {
-		msg := buildNearTargetMotivationMessage(t, currentDateTime)
-		s.sendAndLog(t, domain.NotificationTypeNearTarget, msg)
+		for _, t := range targets {
+			plannedHours := fastDurationHours(t.FastStart, t.FastEnd)
+			plan := domain.SmartNotificationPlanFor(t.FastingTypeName, plannedHours)
+			if plan.PreBreakLeadHours != leadHours {
+				continue
+			}
+
+			msg := buildNearTargetMotivationMessage(t, currentDateTime)
+			s.sendAndLog(t, notificationType, msg)
+		}
 	}
 }
 
 func (s *Scheduler) notifyHydrationReminders(currentDateTime string, now time.Time) {
-	for _, hour := range domain.HydrationReminderHours {
+	for _, hour := range domain.HydrationReminderHours() {
 		notificationType := domain.HydrationNotificationType(hour)
 		targets, err := s.scheduleRepo.FindUsersForElapsedNotification(notificationType, hour, currentDateTime)
 		if err != nil {
@@ -172,12 +182,40 @@ func (s *Scheduler) notifyHydrationReminders(currentDateTime string, now time.Ti
 		}
 
 		for _, t := range targets {
+			plannedHours := fastDurationHours(t.FastStart, t.FastEnd)
+			plan := domain.SmartNotificationPlanFor(t.FastingTypeName, plannedHours)
+			if !containsHour(plan.HydrationReminderHours, hour) {
+				continue
+			}
+
 			remaining, ok := remainingDuration(t.FastEnd, now)
 			if isDryFastingName(t.FastingTypeName) || !ok || remaining <= 2*time.Hour {
 				continue
 			}
 
 			msg := buildHydrationReminderMessage(t, hour, currentDateTime)
+			s.sendAndLog(t, notificationType, msg)
+		}
+	}
+}
+
+func (s *Scheduler) notifyDrySafetyReminders(currentDateTime string) {
+	for _, hour := range domain.DrySafetyReminderHours() {
+		notificationType := domain.DrySafetyNotificationType(hour)
+		targets, err := s.scheduleRepo.FindUsersForElapsedNotification(notificationType, hour, currentDateTime)
+		if err != nil {
+			s.log.Warn("scheduler error (dry safety)", "type", notificationType, "error", err)
+			continue
+		}
+
+		for _, t := range targets {
+			plannedHours := fastDurationHours(t.FastStart, t.FastEnd)
+			plan := domain.SmartNotificationPlanFor(t.FastingTypeName, plannedHours)
+			if !containsHour(plan.DrySafetyReminderHours, hour) {
+				continue
+			}
+
+			msg := buildDrySafetyReminderMessage(t, hour, currentDateTime)
 			s.sendAndLog(t, notificationType, msg)
 		}
 	}
@@ -223,6 +261,10 @@ func buildNearTargetMotivationMessage(t repository.NotificationTarget, currentDa
 	if nudge := proactiveSafetyNudge(t.FastingTypeName, fastDurationHours(t.FastStart, currentDateTime), t.UserID); nudge != "" {
 		body += "\n\n" + nudge
 	}
+	benefit := preBreakBenefitNudge(t.FastingTypeName, fastDurationHours(t.FastStart, t.FastEnd))
+	if benefit != "" {
+		body += "\n\n" + benefit
+	}
 
 	return fmt.Sprintf(
 		"🏁 *Tinggal sedikit lagi, %s!*\n\n"+
@@ -241,16 +283,29 @@ func buildHydrationReminderMessage(t repository.NotificationTarget, elapsedHours
 	if elapsedHours >= 24 && isWaterOrProlongedFastingName(t.FastingTypeName) {
 		body += "\n\n" + schedulerMessage(domain.ElectrolyteNudges(), t.UserID)
 	}
+	body += "\n\n" + hydrationBenefitNudge(t.FastingTypeName, fastDurationHours(t.FastStart, t.FastEnd), elapsedHours)
 
 	return fmt.Sprintf(
-		"💧 *Reminder hidrasi, %s*\n\n"+
+		"💧 *Cek dehidrasi, %s*\n\n"+
 			"Sudah sekitar *%d jam* puasa — sisa *%s*.\n\n"+
 			"%s\n\n"+
-			"Kadang lemas = cairan/elektrolit kurang, bukan lapar. Cek tubuh dulu. 💪",
+			"Tanda kurang cairan: pusing, mulut kering, urin pekat, atau lemas yang tidak biasa. Cek tubuh dulu. 💪",
 		t.Name,
 		elapsedHours,
 		calculateDuration(currentDateTime, t.FastEnd),
 		body,
+	)
+}
+
+func buildDrySafetyReminderMessage(t repository.NotificationTarget, elapsedHours int, currentDateTime string) string {
+	return fmt.Sprintf(
+		"⚠️ *Safety check dry fasting, %s*\n\n"+
+			"Sudah sekitar *%d jam* — sisa *%s*.\n\n"+
+			"Dry fasting bukan ajakan konsumsi apa pun. Fokusnya membaca sinyal tubuh: pusing berat, bingung, lemas ekstrem, jantung berdebar, atau suhu tubuh terasa tidak normal.\n\n"+
+			"Manfaat puasa tetap datang dari insulin rendah dan jeda cerna, tapi keselamatan selalu nomor satu. Kalau sinyal tubuh keras, batalkan dengan bijak. 🧘",
+		t.Name,
+		elapsedHours,
+		calculateDuration(currentDateTime, t.FastEnd),
 	)
 }
 
@@ -488,6 +543,15 @@ func remainingDuration(endStr string, now time.Time) (time.Duration, bool) {
 	return remaining, true
 }
 
+func containsHour(hours []int, target int) bool {
+	for _, hour := range hours {
+		if hour == target {
+			return true
+		}
+	}
+	return false
+}
+
 func schedulerMessage(pool []string, userID int64) string {
 	if len(pool) == 0 {
 		return "💪 Kamu sedang membangun konsistensi. Lanjutkan pelan-pelan, satu jam demi satu jam."
@@ -503,6 +567,35 @@ func isDryFastingName(name string) bool {
 func isWaterOrProlongedFastingName(name string) bool {
 	lowerName := strings.ToLower(name)
 	return strings.Contains(lowerName, "water fasting") || strings.Contains(lowerName, "prolonged")
+}
+
+func hydrationBenefitNudge(fastingTypeName string, plannedHours, elapsedHours int) string {
+	if isWaterOrProlongedFastingName(fastingTypeName) && plannedHours >= 24 {
+		return "🧂 Di puasa air panjang, insulin rendah membuat ginjal lebih banyak membuang natrium. Air + elektrolit bantu mencegah pusing dan menjaga tekanan darah lebih stabil."
+	}
+	if plannedHours >= 20 {
+		return "⚡ Di zona OMAD/20+ jam, hidrasi cukup membantu fokus tetap stabil saat tubuh dominan memakai lemak dan keton ringan."
+	}
+	if elapsedHours >= 8 {
+		return "🔥 Hidrasi cukup bikin fase metabolic switch lebih nyaman: lapar lebih mudah dibedakan dari haus, energi lebih stabil."
+	}
+	return "💧 Cukup cairan membantu tubuh melewati jam transisi tanpa mengira haus sebagai lapar."
+}
+
+func preBreakBenefitNudge(fastingTypeName string, plannedHours int) string {
+	if isDryFastingName(fastingTypeName) {
+		return "⚠️ Siapkan buka yang bertahap: teguk kecil dulu, jeda, baru makanan ringan. Dry fasting menuntut transisi lebih pelan."
+	}
+	if plannedHours >= 48 {
+		return "🧬 Manfaat besar puasa panjang ada di fase repair, tapi hasilnya dijaga saat refeed. Mulai cairan/kaldu + elektrolit dulu, jangan langsung porsi besar."
+	}
+	if plannedHours >= 24 {
+		return "🧂 Kamu sudah masuk zona insulin rendah dan autophagy tinggi. Siapkan buka pelan: cairan/kaldu dulu, protein ringan, lalu makanan utuh."
+	}
+	if plannedHours >= 20 {
+		return "⚡ Zona OMAD melatih metabolic flexibility. Saat buka nanti, protein dulu membantu kenyang stabil dan mencegah gula darah naik tajam."
+	}
+	return "🔥 IF pendek tetap bermanfaat: jeda insulin, akses lemak, dan ritme makan lebih rapi. Buka pelan agar kurva gula darah tetap landai."
 }
 
 func proactiveSafetyNudge(fastingTypeName string, elapsedHours int, userID int64) string {

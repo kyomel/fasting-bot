@@ -190,7 +190,7 @@ func (r *motivationScheduleRepo) FindUsersToNotifyEnd(currentTime, currentDate, 
 func (r *motivationScheduleRepo) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersNearTargetNotification(notificationType, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
 	return nil, nil
 }
 func (r *motivationScheduleRepo) FindUsersWithActiveFasting(currentDateTime string) ([]repository.NotificationTarget, error) {

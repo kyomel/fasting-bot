@@ -455,7 +455,7 @@ func (r *ScheduleRepositorySQLite) FindUsersForElapsedNotification(notificationT
 	return scanNotificationTargets(rows)
 }
 
-func (r *ScheduleRepositorySQLite) FindUsersNearTargetNotification(notificationType, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *ScheduleRepositorySQLite) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
 	rows, err := r.db.Query(`
 		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
@@ -466,14 +466,14 @@ func (r *ScheduleRepositorySQLite) FindUsersNearTargetNotification(notificationT
 		AND length(fs.fast_end) > 5
 		AND datetime(fs.fast_start) <= datetime(?)
 		AND datetime(fs.fast_end) > datetime(?)
-		AND datetime(fs.fast_end, '-2 hours') <= datetime(?)
+		AND datetime(fs.fast_end, '-' || ? || ' hours') <= datetime(?)
 		AND NOT EXISTS (
 			SELECT 1 FROM notification_logs nl
 			WHERE nl.user_id = u.id
-			AND nl.notification_type = ?
+			AND nl.notification_type IN (?, 'near_target')
 			AND datetime(nl.sent_at) >= datetime(fs.fast_start)
 		)
-	`, currentDateTime, currentDateTime, currentDateTime, notificationType)
+	`, currentDateTime, currentDateTime, leadHours, currentDateTime, notificationType)
 	if err != nil {
 		return nil, err
 	}

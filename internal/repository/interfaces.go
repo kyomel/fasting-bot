@@ -24,7 +24,7 @@ type ScheduleRepository interface {
 	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]NotificationTarget, error)
-	FindUsersNearTargetNotification(notificationType, currentDateTime string) ([]NotificationTarget, error)
+	FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersWithActiveFasting(currentDateTime string) ([]NotificationTarget, error)
 	FindUsersWithExpiredStreaks(currentDateTime string) ([]ExpiredStreakTarget, error)
 	ResetStreakByUserID(userID int64) error
