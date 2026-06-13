@@ -71,6 +71,21 @@ func TestIsAuthorizedAllowsOnlyConfiguredGroup(t *testing.T) {
 	}
 }
 
+func TestPemulaCommandReturnsBeginnerGuide(t *testing.T) {
+	h := &CommandHandler{}
+
+	got, err := h.processCommand("+628123456789", "628123456789@s.whatsapp.net", "/pemula")
+	if err != nil {
+		t.Fatalf("processCommand(/pemula) returned error: %v", err)
+	}
+
+	for _, want := range []string{"Panduan IF untuk Pemula", "/puasa 12", "Dry fasting", "maksimal 48 jam"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("/pemula response should contain %q, got: %q", want, got)
+		}
+	}
+}
+
 func TestProactiveDryFastingMessageHasSafetyWarningWithoutHydration(t *testing.T) {
 	msg := buildPhaseMilestoneMessage(repository.NotificationTarget{
 		UserID:          1,

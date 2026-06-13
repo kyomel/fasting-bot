@@ -40,6 +40,8 @@ type FastingUsecase interface {
 	GetMotivation(phone string) (string, error)
 	SetFastingType(phone string, typeID int, startTime string, durationHours int) (string, error)
 	ScheduleFastingType(phone string, typeID int, dateInput, startTime string, durationHours int) (string, error)
+	SetFastingByDuration(phone string, durationHours int, isDry bool, startTime string) (string, error)
+	ScheduleFastingByDuration(phone string, durationHours int, isDry bool, dateInput, startTime string) (string, error)
 }
 
 var (
@@ -99,13 +101,11 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 		"ID: %d\nNomor: %s\n\n"+
 		"Bot ini bakal nemenin kamu tracking puasa — IF, OMAD, Water/Dry/Prolonged Fasting — plus ngirim notifikasi otomatis pas mulai & waktunya buka.\n\n"+
 		"🚀 *Mulai dalam 30 detik:*\n"+
-		"1️⃣ /list-puasa — lihat 10 jenis puasa\n"+
-		"2️⃣ Pilih yang cocok, lalu salah satu:\n"+
-		"   • */set-puasa <nomor> <jam>* — mulai hari ini\n"+
-		"     contoh: `/set-puasa 3 05:00` (IF 16:8 mulai jam 5)\n"+
-		"   • */jadwalkan <nomor> <tanggal> <jam>* — set untuk tanggal tertentu\n"+
-		"     contoh: `/jadwalkan 3 23-05-2026 16:00`\n\n"+
-		"Saran buat pemula: mulai dari IF 14:10 (nomor 2) atau IF 16:8 (nomor 3). Body adaptation lebih halus. 💪", name, user.ID, phone), nil
+		"1️⃣ /panduan — baca ringkas jenis puasa & cara pakai bot\n"+
+		"2️⃣ /puasa 14 atau /puasa 16 — mulai dari sekarang\n"+
+		"3️⃣ /puasa 16 05:00 — mulai jam 5, durasi 16 jam\n"+
+		"4️⃣ /jadwal 16 23-05-2026 05:00 — jadwalkan ke tanggal tertentu\n\n"+
+		"Saran buat pemula: mulai dari IF 14:10 atau IF 16:8. Body adaptation lebih halus. 💪", name, user.ID, phone), nil
 }
 
 func (u *fastingUsecase) SetName(phone, name string) (string, error) {
@@ -150,7 +150,9 @@ func (u *fastingUsecase) SetSchedule(phone, start, end string) (string, error) {
 		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
-	u.scheduleRepo.DeactivateByUserID(user.ID)
+	if err := u.scheduleRepo.DeactivateByUserID(user.ID); err != nil {
+		return "", fmt.Errorf("gagal menonaktifkan jadwal lama: %w", err)
+	}
 
 	schedule := &domain.FastingSchedule{
 		UserID:          user.ID,
@@ -183,9 +185,9 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 	if err != nil {
 		return fmt.Sprintf("📋 *Status Akun*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal puasa aktif.\n\n"+
 			"Atur sekarang:\n"+
-			"• */list-puasa* — lihat semua jenis\n"+
-			"• */set-puasa <nomor> <jam>* — mulai hari ini\n"+
-			"• */jadwalkan <nomor> <tanggal> <jam>* — set untuk tanggal tertentu", user.ID, name, user.Phone), nil
+			"• */panduan* — baca panduan ringkas\n"+
+			"• */puasa 16* — mulai 16 jam dari sekarang\n"+
+			"• */jadwal 16 23-05-2026 05:00* — set untuk tanggal tertentu", user.ID, name, user.Phone), nil
 	}
 	fastingTypeName := schedule.FastingTypeName
 	if fastingTypeName == "" {
@@ -626,12 +628,61 @@ func (u *fastingUsecase) ScheduleFastingType(phone string, typeID int, dateInput
 	return u.saveFastingTypeSchedule(phone, typeID, startDateTime, durationHours, true)
 }
 
-func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, startDateTime time.Time, durationHours int, markElapsedNotifications bool) (string, error) {
-	fastHours, fastingTypeName, validationMessage := fastingTypeScheduleDetails(typeID, durationHours)
-	if validationMessage != "" {
-		return validationMessage, nil
+func (u *fastingUsecase) SetFastingByDuration(phone string, durationHours int, isDry bool, startTime string) (string, error) {
+	if durationHours < 1 || durationHours > 168 {
+		return "❌ Durasi harus 1-168 jam.", nil
 	}
-	endDateTime := calculateEndDateTime(startDateTime, fastHours)
+	if isDry && durationHours > 48 {
+		return "❌ Dry fasting maksimal 48 jam dulu karena terlalu ekstrem.", nil
+	}
+
+	var startDateTime time.Time
+	var err error
+	if startTime == "" {
+		startDateTime = time.Now().In(config.Location).Truncate(time.Minute)
+	} else {
+		startDateTime, err = nextStartFromClock(startTime)
+		if err != nil {
+			return "❌ Format jam mulai salah. Gunakan HH:MM (contoh: 05:00)", nil
+		}
+	}
+
+	fastingTypeName := buildFastingTypeName(durationHours, isDry)
+	return u.saveFastingScheduleCore(phone, startDateTime, durationHours, fastingTypeName, false)
+}
+
+func (u *fastingUsecase) ScheduleFastingByDuration(phone string, durationHours int, isDry bool, dateInput, startTime string) (string, error) {
+	if durationHours < 1 || durationHours > 168 {
+		return "❌ Durasi harus 1-168 jam.", nil
+	}
+	if isDry && durationHours > 48 {
+		return "❌ Dry fasting maksimal 48 jam dulu karena terlalu ekstrem.", nil
+	}
+
+	startDateTime, err := time.ParseInLocation(inputDateLayout+" "+clockLayout, dateInput+" "+startTime, config.Location)
+	if err != nil {
+		return "❌ Format jadwal salah. Gunakan: /jadwal <durasi> DD-MM-YYYY HH:MM\nContoh: /jadwal 16 20-06-2026 05:00", nil
+	}
+
+	fastingTypeName := buildFastingTypeName(durationHours, isDry)
+	return u.saveFastingScheduleCore(phone, startDateTime, durationHours, fastingTypeName, true)
+}
+
+func buildFastingTypeName(durationHours int, isDry bool) string {
+	if isDry {
+		return fmt.Sprintf("Dry Fasting %d jam", durationHours)
+	}
+	if durationHours >= 24 {
+		return fmt.Sprintf("Water Fasting %d jam", durationHours)
+	}
+	if durationHours >= 22 {
+		return fmt.Sprintf("OMAD %d jam", durationHours)
+	}
+	return fmt.Sprintf("IF %d jam", durationHours)
+}
+
+func (u *fastingUsecase) saveFastingScheduleCore(phone string, startDateTime time.Time, durationHours int, fastingTypeName string, markElapsedNotifications bool) (string, error) {
+	endDateTime := startDateTime.Add(time.Duration(durationHours) * time.Hour)
 
 	user, err := u.userRepo.FindByPhone(phone)
 	if err != nil {
@@ -641,7 +692,9 @@ func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, start
 		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
-	u.scheduleRepo.DeactivateByUserID(user.ID)
+	if err := u.scheduleRepo.DeactivateByUserID(user.ID); err != nil {
+		return "", fmt.Errorf("gagal menonaktifkan jadwal lama: %w", err)
+	}
 
 	schedule := &domain.FastingSchedule{
 		UserID:          user.ID,
@@ -656,18 +709,24 @@ func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, start
 		u.markElapsedNotifications(user.ID, startDateTime, endDateTime)
 	}
 
-	plannedHours := int(endDateTime.Sub(startDateTime).Hours())
 	return fmt.Sprintf(
 		"🎯 *Jadwal %s tersimpan!*\n"+
 			"⏱ Mulai: *%s*\n"+
-			"🏁 Buka: *%s* (±%d jam)\n\n"+
+			"🏁 Buka: *%s* (%d jam)\n\n"+
 			"%s\n\n"+
 			"Kamu akan dapat notifikasi otomatis saat mulai & saat waktunya buka.\n"+
-			"_Mau ganti? Tinggal jalankan /set-puasa atau /jadwalkan lagi — jadwal lama otomatis dimatikan._\n\n"+
-			"Rencana siap — tinggal jalanin. Let's go! 🚀",
+			"_Mau ganti? Jalankan /puasa lagi — jadwal lama otomatis dimatikan._",
 		fastingTypeName, formatDisplayTime(startDateTime), formatDisplayTime(endDateTime),
-		plannedHours, scheduleTeaserForDuration(plannedHours, fastingTypeName),
+		durationHours, scheduleTeaserForDuration(durationHours, fastingTypeName),
 	), nil
+}
+
+func (u *fastingUsecase) saveFastingTypeSchedule(phone string, typeID int, startDateTime time.Time, durationHours int, markElapsedNotifications bool) (string, error) {
+	fastHours, fastingTypeName, validationMessage := fastingTypeScheduleDetails(typeID, durationHours)
+	if validationMessage != "" {
+		return validationMessage, nil
+	}
+	return u.saveFastingScheduleCore(phone, startDateTime, fastHours, fastingTypeName, markElapsedNotifications)
 }
 
 // scheduleTeaserForDuration shows a 1-line, secular preview of what the body
@@ -696,7 +755,7 @@ func scheduleTeaserForDuration(durationHours int, fastingTypeName string) string
 func fastingTypeScheduleDetails(typeID int, durationHours int) (int, string, string) {
 	fastingType, err := domain.GetFastingTypeByID(typeID)
 	if err != nil {
-		return 0, "", "❌ Jenis puasa tidak ditemukan. Kirim /list-puasa untuk melihat daftar."
+		return 0, "", "❌ Jenis puasa tidak ditemukan. Gunakan /panduan atau command baru /puasa."
 	}
 
 	switch fastingType.ID {
@@ -708,18 +767,18 @@ func fastingTypeScheduleDetails(typeID int, durationHours int) (int, string, str
 		}
 		return durationHours, fmt.Sprintf("Water Fasting %d jam", durationHours), ""
 	case 9:
-		if durationHours < 1 {
-			return 0, "", "❌ Durasi Dry Fasting harus minimal 1 jam."
+		if durationHours < 1 || durationHours > 48 {
+			return 0, "", "❌ Durasi Dry Fasting harus 1-48 jam dulu karena terlalu ekstrem."
 		}
 		return durationHours, fmt.Sprintf("Dry Fasting %d jam", durationHours), ""
 	case 10:
-		if durationHours < 24 {
-			return 0, "", "❌ Prolonged Fasting metode water fasting minimal 24 jam."
+		if durationHours < 24 || durationHours > 168 {
+			return 0, "", "❌ Prolonged Fasting metode water fasting harus 24-168 jam."
 		}
 		return durationHours, fmt.Sprintf("Prolonged Fasting (Water) %d jam", durationHours), ""
 	}
 
-	return 0, "", "❌ Jenis puasa tidak ditemukan. Kirim /list-puasa untuk melihat daftar."
+	return 0, "", "❌ Jenis puasa tidak ditemukan. Gunakan /panduan atau command baru /puasa."
 }
 
 func (u *fastingUsecase) markElapsedNotifications(userID int64, startDateTime, endDateTime time.Time) {

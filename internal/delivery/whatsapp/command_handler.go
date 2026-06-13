@@ -147,13 +147,50 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 		})
 
 	case "/list-puasa":
-		return domain.GetFastingTypesList(), nil
+		return "ℹ️ *Info:* `/list-puasa` sudah berubah jadi `/panduan` — panduan edukatif yang lebih jelas.\n\n" + domain.GetPanduan(), nil
+
+	case "/panduan":
+		return domain.GetPanduan(), nil
+
+	case "/pemula":
+		return domain.GetPemulaGuide(), nil
 
 	case "/set-puasa":
-		return h.handleSetPuasa(phone, args)
+		return h.handleDeprecatedSetPuasa(phone, args)
+
+	case "/puasa":
+		return h.handlePuasa(phone, args)
+
+	case "/puasa-dry":
+		return h.handlePuasaDry(phone, args)
+
+	case "/jadwal":
+		return h.handleJadwal(phone, args, false)
+
+	case "/jadwal-dry":
+		return h.handleJadwal(phone, args, true)
 
 	case "/jadwalkan":
-		return h.handleJadwalkan(phone, args)
+		return h.handleDeprecatedJadwalkan(phone, args)
+
+	case "/if-168":
+		return h.handlePuasa(phone, []string{"16"})
+	case "/if-186":
+		return h.handlePuasa(phone, []string{"18"})
+	case "/if-204":
+		return h.handlePuasa(phone, []string{"20"})
+	case "/if-1410":
+		return h.handlePuasa(phone, []string{"14"})
+	case "/omad":
+		return h.handlePuasa(phone, []string{"22"})
+	case "/water-24":
+		return h.handlePuasa(phone, []string{"24"})
+	case "/water-48":
+		return h.handlePuasa(phone, []string{"48"})
+	case "/water-72":
+		return h.handlePuasa(phone, []string{"72"})
+	case "/dry-24":
+		return h.handlePuasaDry(phone, []string{"24"})
 
 	case "/status":
 		return h.callUsecase(phone, "GetStatus", func() (string, error) {
@@ -234,16 +271,18 @@ const (
 )
 
 var errorLabels = map[string]string{
-	"RegisterUser":   "mendaftar",
-	"SetName":        "mengubah nama",
-	"GetStatus":      "mengambil status",
-	"GetMotivation":  "mengambil pesan motivasi",
-	"CancelToday":    "membatalkan",
-	"BreakFastingAt": "membuka puasa",
-	"DeleteSchedule": "menghapus jadwal",
-	"GetStats":       "mengambil stats",
-	"GetBadges":      "mengambil badge",
-	"GetLeaderboard": "mengambil leaderboard",
+	"RegisterUser":              "mendaftar",
+	"SetName":                   "mengubah nama",
+	"GetStatus":                 "mengambil status",
+	"GetMotivation":             "mengambil pesan motivasi",
+	"CancelToday":               "membatalkan",
+	"BreakFastingAt":            "membuka puasa",
+	"DeleteSchedule":            "menghapus jadwal",
+	"GetStats":                  "mengambil stats",
+	"GetBadges":                 "mengambil badge",
+	"GetLeaderboard":            "mengambil leaderboard",
+	"SetFastingByDuration":      "menyimpan jadwal puasa",
+	"ScheduleFastingByDuration": "menjadwalkan puasa",
 }
 
 func errorLabel(method string) string {
@@ -260,7 +299,7 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, er
 
 	typeID, err := strconv.Atoi(args[0])
 	if err != nil || typeID < 1 || typeID > 10 {
-		return "❌ Nomor puasa tidak valid. Pilih 1-10. Kirim /list-puasa untuk melihat daftar.", nil
+		return "❌ Nomor puasa tidak valid. Pilih 1-10. Untuk flow baru, gunakan /puasa 16 atau baca /panduan.", nil
 	}
 
 	startTime := args[1]
@@ -292,7 +331,7 @@ func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, e
 
 	typeID, err := strconv.Atoi(args[0])
 	if err != nil || typeID < 1 || typeID > 10 {
-		return "❌ Nomor puasa tidak valid. Pilih 1-10. Kirim /list-puasa untuk melihat daftar.", nil
+		return "❌ Nomor puasa tidak valid. Pilih 1-10. Untuk flow baru, gunakan /jadwal 16 23-05-2026 05:00 atau baca /panduan.", nil
 	}
 
 	durationHours := 0
@@ -324,19 +363,100 @@ func (h *CommandHandler) handleBuka(phone string, args []string) (string, error)
 	})
 }
 
+func (h *CommandHandler) handlePuasa(phone string, args []string) (string, error) {
+	durationHours := 16
+	if len(args) >= 1 {
+		d, err := strconv.Atoi(args[0])
+		if err != nil {
+			return "❌ Durasi harus angka. Contoh: /puasa 16", nil
+		}
+		durationHours = d
+	}
+	var startTime string
+	if len(args) >= 2 {
+		startTime = args[1]
+	}
+	if len(args) > 2 {
+		return "❌ Format salah. Gunakan: /puasa [durasi] [jam]\nContoh: /puasa 16 atau /puasa 16 05:00", nil
+	}
+	return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
+		return h.usecase.SetFastingByDuration(phone, durationHours, false, startTime)
+	})
+}
+
+func (h *CommandHandler) handlePuasaDry(phone string, args []string) (string, error) {
+	durationHours := 16
+	if len(args) >= 1 {
+		d, err := strconv.Atoi(args[0])
+		if err != nil {
+			return "❌ Durasi harus angka. Contoh: /puasa-dry 16", nil
+		}
+		durationHours = d
+	}
+	var startTime string
+	if len(args) >= 2 {
+		startTime = args[1]
+	}
+	if len(args) > 2 {
+		return "❌ Format salah. Gunakan: /puasa-dry [durasi] [jam]\nContoh: /puasa-dry 16 atau /puasa-dry 16 05:00", nil
+	}
+	return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
+		return h.usecase.SetFastingByDuration(phone, durationHours, true, startTime)
+	})
+}
+
+func (h *CommandHandler) handleJadwal(phone string, args []string, isDry bool) (string, error) {
+	if len(args) != 3 {
+		cmd := "/jadwal"
+		if isDry {
+			cmd = "/jadwal-dry"
+		}
+		return fmt.Sprintf("❌ Format salah.\nGunakan: %s <durasi> <tanggal> <jam>\nContoh: %s 16 20-06-2026 05:00", cmd, cmd), nil
+	}
+	durationHours, err := strconv.Atoi(args[0])
+	if err != nil {
+		return "❌ Durasi harus angka. Contoh: /jadwal 16 20-06-2026 05:00", nil
+	}
+	return h.callUsecase(phone, "ScheduleFastingByDuration", func() (string, error) {
+		return h.usecase.ScheduleFastingByDuration(phone, durationHours, isDry, args[1], args[2])
+	})
+}
+
+func (h *CommandHandler) handleDeprecatedSetPuasa(phone string, args []string) (string, error) {
+	resp, err := h.handleSetPuasa(phone, args)
+	if err != nil {
+		return resp, err
+	}
+	notice := "ℹ️ *Info:* Command lama `/set-puasa` masih berfungsi, tapi sekarang sudah lebih simpel pakai `/puasa`:\n" +
+		"• `/puasa 16` — mulai 16 jam dari sekarang\n" +
+		"• `/puasa 16 05:00` — mulai jam 5, durasi 16 jam\n\n"
+	return notice + resp, nil
+}
+
+func (h *CommandHandler) handleDeprecatedJadwalkan(phone string, args []string) (string, error) {
+	resp, err := h.handleJadwalkan(phone, args)
+	if err != nil {
+		return resp, err
+	}
+	notice := "ℹ️ *Info:* Command lama `/jadwalkan` masih berfungsi, tapi sekarang sudah lebih simpel pakai `/jadwal`:\n" +
+		"• `/jadwal 16 20-06-2026 05:00` — jadwalkan 16 jam\n\n"
+	return notice + resp, nil
+}
+
 func getHelpText() string {
 	return `🤖 *Fasting Bot — Teman Puasa Kamu*
 
 ✨ *4 Perintah Utama:*
-1️⃣ */set-puasa <nomor> <jam> [durasi]* — Pilih jenis puasa & mulai
-2️⃣ */jadwalkan <nomor> <tanggal> <jam> [durasi]* — Jadwalkan untuk tanggal tertentu
+1️⃣ */puasa [durasi] [jam]* — Mulai puasa, default 16 jam dari sekarang
+2️⃣ */jadwal <durasi> <tanggal> <jam>* — Jadwalkan untuk tanggal tertentu
 3️⃣ */buka* — Catat buka puasa sekarang
 4️⃣ */buka <tanggal> <jam>* — Catat buka puasa di waktu yang lalu (kalau lupa)
 
 📋 *Perintah Pendukung:*
 /daftar <nama> — Daftar sebagai user
 /setname <nama> — Ubah nama
-/list-puasa — Lihat jenis-jenis puasa
+/panduan — Panduan edukatif tentang puasa
+/pemula — Panduan IF bertahap dari 12 jam
 /status — Cek status puasa kamu sekarang
 /motivasi — Suntikan semangat sesuai fase puasamu
 /batalkan — Batalkan jadwal puasa aktif
@@ -346,11 +466,17 @@ func getHelpText() string {
 /bantuan — Tampilkan bantuan ini
 /info — Info bot
 
+⚡ *Preset Cepat:*
+/if-168, /if-186, /if-204, /if-1410
+/omad, /water-24, /water-48, /water-72
+/dry-24
+
 💡 *Contoh praktis:*
 /daftar kyomel
-/set-puasa 3 05:00          (IF 16:8 mulai 05:00)
-/set-puasa 8 05:00 48       (Water Fasting 48 jam)
-/jadwalkan 3 23-05-2026 16:00
+/puasa 16                  (IF 16 jam dari sekarang)
+/puasa 16 05:00            (IF 16 jam mulai jam 5)
+/puasa-dry 18              (Dry Fasting 18 jam dari sekarang)
+/jadwal 16 20-06-2026 05:00
 /buka                       (buka sekarang)
 /buka 23-05-2026 18:30      (buka jam 18:30 tadi)
 
