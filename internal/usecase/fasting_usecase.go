@@ -762,8 +762,8 @@ func fastingTypeScheduleDetails(typeID int, durationHours int) (int, string, str
 	case 1, 2, 3, 4, 5, 6, 7:
 		return fastingType.FastHours, fastingType.Name, ""
 	case 8:
-		if durationHours != 24 && durationHours != 36 && durationHours != 48 && durationHours != 72 {
-			return 0, "", "❌ Durasi Water Fasting harus 24, 36, 48, atau 72 jam."
+		if durationHours != 24 && durationHours != 36 && durationHours != 48 && durationHours != 56 && durationHours != 64 && durationHours != 72 {
+			return 0, "", "❌ Durasi Water Fasting harus 24, 36, 48, 56, 64, atau 72 jam."
 		}
 		return durationHours, fmt.Sprintf("Water Fasting %d jam", durationHours), ""
 	case 9:

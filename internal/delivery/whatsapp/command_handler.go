@@ -146,9 +146,6 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 			return h.usecase.SetName(phone, name)
 		})
 
-	case "/list-puasa":
-		return "ℹ️ *Info:* `/list-puasa` sudah berubah jadi `/panduan` — panduan edukatif yang lebih jelas.\n\n" + domain.GetPanduan(), nil
-
 	case "/panduan":
 		return domain.GetPanduan(), nil
 
@@ -185,8 +182,14 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 		return h.handlePuasa(phone, []string{"22"})
 	case "/water-24":
 		return h.handlePuasa(phone, []string{"24"})
+	case "/water-36":
+		return h.handlePuasa(phone, []string{"36"})
 	case "/water-48":
 		return h.handlePuasa(phone, []string{"48"})
+	case "/water-56":
+		return h.handlePuasa(phone, []string{"56"})
+	case "/water-64":
+		return h.handlePuasa(phone, []string{"64"})
 	case "/water-72":
 		return h.handlePuasa(phone, []string{"72"})
 	case "/dry-24":
@@ -468,7 +471,8 @@ func getHelpText() string {
 
 ⚡ *Preset Cepat:*
 /if-168, /if-186, /if-204, /if-1410
-/omad, /water-24, /water-48, /water-72
+/omad, /water-24, /water-36, /water-48
+/water-56, /water-64, /water-72
 /dry-24
 
 💡 *Contoh praktis:*

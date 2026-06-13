@@ -119,16 +119,17 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 2. Kirim command di grup:
 ```
 /daftar kyomel
-/list-puasa
-/set-puasa 3 05:00
+/panduan
+/pemula
+/puasa 16
 /status
 /batalkan
 ```
 
-**Test /list-puasa dan /set-puasa:**
+**Test /panduan dan /puasa:**
 ```
-/list-puasa
-/set-puasa 3 05:00
+/panduan
+/puasa 16
 /status
 /batalkan
 ```
@@ -143,13 +144,13 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 |---|---|---|
 | `/daftar <nama>` | Daftar sebagai user. Jika nomor WhatsApp sudah terdaftar, bot akan menolak pendaftaran ulang | `/daftar kyomel` |
 | `/setname <nama>` | Ubah nama user yang sudah terdaftar | `/setname kyomel baru` |
-| `/list-puasa` | Lihat jenis-jenis puasa | `/list-puasa` |
 | `/panduan` | Panduan edukatif tentang puasa dan cara pakai bot | `/panduan` |
 | `/pemula` | Panduan IF bertahap dari 12 jam sampai tubuh terbiasa | `/pemula` |
 | `/puasa [durasi] [jam]` | Mulai puasa berbasis durasi. Default 16 jam dari sekarang | `/puasa 16` |
 | `/puasa-dry [durasi] [jam]` | Mulai dry fasting berbasis durasi, maksimal 48 jam | `/puasa-dry 18` |
 | `/jadwal <durasi> <tanggal> <jam>` | Jadwalkan puasa berbasis durasi ke tanggal tertentu | `/jadwal 16 20-06-2026 05:00` |
 | `/jadwal-dry <durasi> <tanggal> <jam>` | Jadwalkan dry fasting, maksimal 48 jam | `/jadwal-dry 18 20-06-2026 05:00` |
+| `/water-24`, `/water-36`, `/water-48`, `/water-56`, `/water-64`, `/water-72` | Preset cepat water/prolonged fasting | `/water-56` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
 | `/jadwalkan <nomor> <tanggal> <jam> [durasi]` | Seperti `/set-puasa`, tetapi memakai tanggal eksplisit. Boleh memakai waktu lampau untuk restore progres yang ter-reset. Tidak memakai kode WF/DF | `/jadwalkan 3 23-05-2026 16:00` |
 | `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan | `/status` |
@@ -175,18 +176,19 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
 | 5 | IF 20:4 | 20 jam | `/set-puasa 5 05:00` |
 | 6 | OMAD-1 | 22 jam | `/set-puasa 6 05:00` |
 | 7 | OMAD-2 | 23 jam | `/set-puasa 7 05:00` |
-| 8 | Water Fasting | 24/36/48/72 jam | `/set-puasa 8 05:00 48` |
+| 8 | Water Fasting | 24/36/48/56/64/72 jam | `/set-puasa 8 05:00 48` |
 | 9 | Dry Fasting | 1-48 jam | `/set-puasa 9 05:00 18` |
 | 10 | Prolonged Fasting (Bebas) | Metode water fasting, minimal 24 jam | `/set-puasa 10 05:00 96` |
 
 ### Cara Menggunakan
 
-1. Lihat daftar: `/list-puasa`
+1. Lihat panduan: `/panduan`
 2. Pilih jenis IF & OMAD (1-7): `/set-puasa <nomor> <jam_mulai>`
    - Contoh: `/set-puasa 3 05:00` → Puasa jam 05:00 - 21:00 (16 jam)
    - Contoh: `/set-puasa 6 05:00` → Puasa jam 05:00 - 03:00 (22 jam)
 3. Pilih Water/Dry/Prolonged Fasting (8-10): `/set-puasa <nomor> <jam_mulai> <durasi_jam>`
    - Contoh: `/set-puasa 8 05:00 48` → Water Fasting 48 jam dari jam 05:00
+   - Quick command prolonged/water: `/water-24`, `/water-36`, `/water-48`, `/water-56`, `/water-64`, `/water-72`
    - Contoh: `/set-puasa 9 05:00 18` → Dry Fasting 18 jam dari jam 05:00 (maksimal 48 jam dulu)
    - Contoh: `/set-puasa 10 05:00 96` → Prolonged Fasting metode water fasting 96 jam dari jam 05:00
 4. Jadwalkan puasa dari daftar dengan tanggal khusus: `/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]`

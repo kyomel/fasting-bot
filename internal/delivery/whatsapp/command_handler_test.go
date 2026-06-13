@@ -86,6 +86,28 @@ func TestPemulaCommandReturnsBeginnerGuide(t *testing.T) {
 	}
 }
 
+func TestListPuasaCommandIsRemoved(t *testing.T) {
+	h := &CommandHandler{}
+
+	got, err := h.processCommand("+628123456789", "628123456789@s.whatsapp.net", "/list-puasa")
+	if err != nil {
+		t.Fatalf("processCommand(/list-puasa) returned error: %v", err)
+	}
+	if got != "" {
+		t.Fatalf("/list-puasa should be removed and return empty response, got: %q", got)
+	}
+}
+
+func TestPanduanIncludesWaterFastingQuickCommands(t *testing.T) {
+	guide := domain.GetPanduan()
+
+	for _, want := range []string{"/water-24", "/water-36", "/water-48", "/water-56", "/water-64", "/water-72"} {
+		if !strings.Contains(guide, want) {
+			t.Fatalf("panduan should contain %q, got: %q", want, guide)
+		}
+	}
+}
+
 func TestProactiveDryFastingMessageHasSafetyWarningWithoutHydration(t *testing.T) {
 	msg := buildPhaseMilestoneMessage(repository.NotificationTarget{
 		UserID:          1,

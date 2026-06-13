@@ -187,8 +187,8 @@ var motivationByPhase = map[string][]string{
 }
 
 var motivationNoSchedule = []string{
-	"🌱 Belum ada jadwal puasa aktif. Mulai dari langkah kecil saja: pilih jenis puasa dengan /list-puasa, lalu set jadwal pertama. Konsistensi menang dari sempurna.",
-	"🚀 Tubuh suka ritme. Yuk buat satu jadwal puasa dulu dengan /set-puasa atau /jadwalkan — nanti aku bantu pantau dan kasih semangat di tengah jalan.",
+	"🌱 Belum ada jadwal puasa aktif. Mulai dari langkah kecil saja: baca /pemula, lalu coba /puasa 12. Konsistensi menang dari sempurna.",
+	"🚀 Tubuh suka ritme. Yuk buat satu jadwal puasa dulu dengan /puasa 16 atau /jadwal 16 20-06-2026 05:00 — nanti aku bantu pantau dan kasih semangat di tengah jalan.",
 }
 
 var motivationPreStart = []string{

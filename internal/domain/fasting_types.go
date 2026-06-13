@@ -17,7 +17,7 @@ var FastingTypes = []FastingType{
 	{ID: 5, Name: "IF 20:4", Description: "Puasa 20 jam, makan 4 jam", FastHours: 20},
 	{ID: 6, Name: "OMAD-1", Description: "One Meal A Day - Puasa 22 jam", FastHours: 22},
 	{ID: 7, Name: "OMAD-2", Description: "One Meal A Day - Puasa 23 jam", FastHours: 23},
-	{ID: 8, Name: "Water Fasting", Description: "Puasa air - 24, 36, 48, atau 72 jam", FastHours: 0},
+	{ID: 8, Name: "Water Fasting", Description: "Puasa air - 24, 36, 48, 56, 64, atau 72 jam", FastHours: 0},
 	{ID: 9, Name: "Dry Fasting", Description: "Puasa kering - maksimal 48 jam", FastHours: 0},
 	{ID: 10, Name: "Prolonged Fasting (Bebas)", Description: "Puasa panjang metode water fasting, minimal 24 jam", FastHours: 0},
 }
@@ -44,8 +44,11 @@ func GetPanduan() string {
 		"*3. Water Fasting*\n" +
 		"Hanya minum air (tanpa makanan) selama periode tertentu.\n" +
 		"• 24 jam — autophagy mulai aktif\n" +
-		"• 36-48 jam — regenerasi sel\n" +
-		"• 72 jam — imun reset (Valter Longo)\n\n" +
+		"• 36 jam — masuk zona deep fast, elektrolit mulai penting\n" +
+		"• 48 jam — regenerasi sel makin kuat\n" +
+		"• 56 jam — naik bertahap setelah 48 jam, wajib pantau energi & tekanan tubuh\n" +
+		"• 64 jam — step lanjutan sebelum 72 jam, refeed harus makin pelan\n" +
+		"• 72 jam — batas atas bot untuk water fasting; refeed harus pelan\n\n" +
 		"*4. Dry Fasting*\n" +
 		"Tanpa makanan & tanpa minum. Risiko lebih tinggi — hanya untuk yang berpengalaman.\n" +
 		"⚠️ Maksimal 48 jam dulu karena ini lebih ekstrem. Pantau sinyal tubuh: pusing, lemas, suhu.\n\n" +
@@ -64,7 +67,12 @@ func GetPanduan() string {
 		"• /if-186 = /puasa 18\n" +
 		"• /if-204 = /puasa 20\n" +
 		"• /omad = /puasa 22\n" +
+		"• /water-24 = /puasa 24\n" +
+		"• /water-36 = /puasa 36\n" +
 		"• /water-48 = /puasa 48\n" +
+		"• /water-56 = /puasa 56\n" +
+		"• /water-64 = /puasa 64\n" +
+		"• /water-72 = /puasa 72\n" +
 		"• /dry-24 = /puasa-dry 24\n\n" +
 		"*Setelah puasa:*\n" +
 		"• /buka — catat buka puasa\n\n" +
@@ -105,8 +113,4 @@ func GetPemulaGuide() string {
 		"*Water fasting* jangan jadi langkah awal. Coba hanya kalau IF 16:8 sudah stabil beberapa minggu. Mulai dari 24 jam dulu, tetap hidrasi, dan perhatikan elektrolit.\n\n" +
 		"*Dry fasting* lebih ekstrem karena tanpa air. Tidak untuk pemula. Di bot ini dibatasi maksimal 48 jam dulu, dan sebaiknya hanya setelah pengalaman cukup serta kondisi tubuh aman.\n\n" +
 		"Kunci: tambah durasi sedikit-sedikit. Kalau tubuh protes, turun level dulu. Konsisten > ekstrem. 💪"
-}
-
-func GetFastingTypesList() string {
-	return GetPanduan()
 }

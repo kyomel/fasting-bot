@@ -398,8 +398,9 @@ func (s *Scheduler) buildNoFastersMessage() string {
 			"Sore bisa jadi start ringan: lewati makan malam, tidur lebih awal, besok tubuh sudah masuk ritme insulin rendah.\n\n"+
 			"🧠 *Tahukah kamu?*\n%s\n\n"+
 			"Mau mulai?\n"+
-			"• */list-puasa* — lihat 10 jenis puasa\n"+
-			"• */set-puasa <nomor> <jam>* — mulai hari ini",
+			"• */pemula* — panduan IF dari 12 jam\n"+
+			"• */panduan* — lihat jenis puasa & preset cepat\n"+
+			"• */puasa 16* — mulai 16 jam dari sekarang",
 		tip,
 	)
 }
@@ -431,7 +432,7 @@ func (s *Scheduler) buildActiveFastersMessage(fasters []repository.NotificationT
 			"%s sedang puasa sekarang! 🔥\n\n"+
 			"%s\n\n"+
 			"%s\n\n"+
-			"Yang mau ikut: */set-puasa <nomor> <jam>*",
+			"Yang mau ikut: */puasa 16* atau cek */panduan*",
 		countWord,
 		strings.Join(lines, "\n"),
 		encouragement,
@@ -453,7 +454,7 @@ func (s *Scheduler) checkBrokenStreaks() {
 			"🔄 *Streak Reset*\n\n"+
 				"*%s* — streak %d hari telah reset.\n\n"+
 				"Angka reset, progress tubuh tidak hilang. Mulai lagi dengan ritme yang lebih ringan kalau perlu.\n\n"+
-				"Restart: */set-puasa <nomor> <jam>* 💪",
+				"Restart: */puasa 12* atau */puasa 16* 💪",
 			t.Name, t.CurrentStreakDays,
 		)
 
