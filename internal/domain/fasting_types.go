@@ -35,6 +35,7 @@ func GetPanduan() string {
 	return "📚 *Panduan Puasa*\n\n" +
 		"*1. Intermittent Fasting (IF)*\n" +
 		"Pola makan dengan jendela makan terbatas. Tubuh masuk mode \"repair\" saat insulin rendah.\n" +
+		"• 12:12 — 12 jam puasa, 12 jam makan (pemula absolut)\n" +
 		"• 14:10 — 14 jam puasa, 10 jam makan (pemula)\n" +
 		"• 16:8 — 16 jam puasa, 8 jam makan (populer)\n" +
 		"• 18:6 — 18 jam puasa, 6 jam makan (intermediate)\n" +
@@ -60,22 +61,55 @@ func GetPanduan() string {
 		"• /puasa 16 — 16 jam dari sekarang\n" +
 		"• /puasa 16 05:00 — mulai jam 5, durasi 16 jam\n" +
 		"• /puasa-dry 18 — dry fasting 18 jam\n\n" +
-		"*Jadwalkan ke depan:*\n" +
+		"*Jadwalkan ke depan (tanggal + jam):*\n" +
+		"• /puasa 16 14-06-2026 19:30\n" +
 		"• /jadwal 16 20-06-2026 05:00\n\n" +
-		"*Preset cepat:*\n" +
-		"• /if-168 = /puasa 16\n" +
-		"• /if-186 = /puasa 18\n" +
-		"• /if-204 = /puasa 20\n" +
-		"• /omad = /puasa 22\n" +
-		"• /water-24 = /puasa 24\n" +
-		"• /water-36 = /puasa 36\n" +
-		"• /water-48 = /puasa 48\n" +
-		"• /water-56 = /puasa 56\n" +
-		"• /water-64 = /puasa 64\n" +
-		"• /water-72 = /puasa 72\n" +
-		"• /dry-24 = /puasa-dry 24\n\n" +
 		"*Setelah puasa:*\n" +
 		"• /buka — catat buka puasa\n\n" +
+		"━━━━━━━━━━━━━━━\n" +
+		getPresetList()
+}
+
+func getPresetList() string {
+	return "⚡ *Preset Cepat — dari Pemula sampai Advanced*\n\n" +
+		"🌱 *IF Ringan (Pemula)*\n" +
+		"/if-1212 — 12:12 (12 jam puasa)\n" +
+		"   🧘 \"Tubuh mulai turunkan insulin & akses lemak perlahan — 12 jam sudah cukup perbaiki ritme sirkadian\"\n" +
+		"/if-1410 — 14:10 (14 jam puasa)\n" +
+		"   🌿 \"Sweet spot pemula: cukup tidur + sedikit ekstra = metabolic switch mulai aktif\"\n\n" +
+		"🔥 *IF Klasik*\n" +
+		"/if-168 — 16:8 (16 jam puasa)\n" +
+		"   ⚡ \"Pola paling populer — autophagy mulai ramp-up, ketone (BHB) jadi bahan bakar otak\"\n" +
+		"/if-186 — 18:6 (18 jam puasa)\n" +
+		"   🧠 \"BDNF naik, fokus lebih tajam, insulin resistance mulai reset\"\n" +
+		"/if-204 — 20:4 (20 jam puasa)\n" +
+		"   💎 \"Warrior diet zone — HGH spike signifikan, fat-adaptation makin efisien\"\n\n" +
+		"🍽️ *OMAD (One Meal A Day)*\n" +
+		"/omad — 22 jam puasa\n" +
+		"   🔋 \"Satu kali makan, 22 jam repair — tubuh dominan ketone sepanjang hari\"\n\n" +
+		"💧 *Water Fasting*\n" +
+		"/water-24 — 24 jam\n" +
+		"   🧬 \"Glikogen 0%, autophagy puncak, tubuh full ketosis\"\n" +
+		"/water-36 — 36 jam\n" +
+		"   🔄 \"IGF-1 turun, sel masuk mode damage control (Valter Longo, USC)\"\n" +
+		"/water-48 — 48 jam\n" +
+		"   🧪 \"Sinyal regenerasi stem cell — sel imun lama dibersihkan, yang baru siap dibentuk saat refeed\"\n" +
+		"/water-56 — 56 jam\n" +
+		"   ⚠️ \"Naik bertahap dari 48 jam — deep cellular cleanup makin dalam\"\n" +
+		"/water-64 — 64 jam\n" +
+		"   ⚠️ \"Step sebelum 72 jam — refeed harus makin pelan\"\n" +
+		"/water-72 — 72 jam\n" +
+		"   🏔️ \"Batas atas bot — imun reset menyeluruh, mitokondria diperbarui\"\n\n" +
+		"⚠️ *Dry Fasting (berpengalaman)*\n" +
+		"/dry-24 — 24 jam\n" +
+		"   🔴 \"Tanpa air — maksimal 48 jam via /puasa-dry. Dengarkan tubuh, jangan paksa\"\n\n" +
+		"💡 *Mau lebih dari 72 jam?*\n" +
+		"Bot membatasi 168 jam (7 hari) via /puasa <durasi>.\n" +
+		"Hanya untuk yang sudah terbiasa — konsultasi dokter dulu.\n" +
+		"Format: /puasa 96 14-06-2026 06:00\n\n" +
+		"✨ *Semua preset bisa diberi waktu:*\n" +
+		"/if-168 19:30 — mulai jam 7:30 malam\n" +
+		"/water-48 14-06-2026 20:00 — jadwalkan ke tanggal tertentu\n\n" +
 		"Konsisten dikit-dikit, hasilnya luar biasa. 💪"
 }
 
@@ -88,19 +122,19 @@ func GetPemulaGuide() string {
 		"*Level 1 — 12:12 (7 hari)*\n" +
 		"• Puasa 12 jam, makan 12 jam\n" +
 		"• Contoh: makan terakhir 20:00, makan lagi 08:00\n" +
-		"• Command: /puasa 12\n\n" +
+		"• Command: /puasa 12 atau /if-1212\n\n" +
 		"*Level 2 — 14:10 (1-2 minggu)*\n" +
 		"• Naik kalau 12 jam sudah terasa biasa\n" +
 		"• Cocok untuk membangun konsistensi tanpa lapar ekstrem\n" +
-		"• Command: /puasa 14\n\n" +
+		"• Command: /puasa 14 atau /if-1410\n\n" +
 		"*Level 3 — 16:8 (2-4 minggu)*\n" +
 		"• Pola IF paling populer\n" +
 		"• Tubuh biasanya mulai lebih terbiasa dengan jeda makan panjang\n" +
-		"• Command: /puasa 16\n\n" +
+		"• Command: /puasa 16 atau /if-168\n\n" +
 		"*Level 4 — 18:6 / 20:4 (opsional)*\n" +
 		"• Naik hanya kalau tidur, energi, mood, dan olahraga tetap aman\n" +
 		"• Jangan dipaksa setiap hari\n" +
-		"• Command: /puasa 18 atau /puasa 20\n\n" +
+		"• Command: /puasa 18, /if-186, /puasa 20, /if-204\n\n" +
 		"━━━━━━━━━━━━━━━\n" +
 		"✅ *Aturan Aman Saat IF*\n" +
 		"• Saat puasa IF: air putih, teh tawar, atau kopi hitam tanpa gula biasanya aman\n" +
@@ -109,8 +143,13 @@ func GetPemulaGuide() string {
 		"• Tidur cukup — kurang tidur bikin lapar dan craving naik\n" +
 		"• Kalau pusing berat, gemetar, hampir pingsan, bingung, atau lemas ekstrem: hentikan puasa\n\n" +
 		"━━━━━━━━━━━━━━━\n" +
+		"💡 *Semua command bisa dikasih waktu:*\n" +
+		"• /puasa 16 19:30 — 16 jam mulai jam 7:30 malam\n" +
+		"• /puasa 16 14-06-2026 05:00 — jadwalkan ke tanggal & jam tertentu\n" +
+		"• /if-168 19:30 — preset /if-168 dengan jam mulai\n\n" +
+		"━━━━━━━━━━━━━━━\n" +
 		"💧 *Setelah IF Terbiasa*\n" +
-		"*Water fasting* jangan jadi langkah awal. Coba hanya kalau IF 16:8 sudah stabil beberapa minggu. Mulai dari 24 jam dulu, tetap hidrasi, dan perhatikan elektrolit.\n\n" +
+		"*Water fasting* jangan jadi langkah awal. Coba hanya kalau IF 16:8 sudah stabil beberapa minggu. Mulai dari 24 jam dulu, tetap hidrasi, dan perhatikan elektrolit. Preset: */water-24*.\n\n" +
 		"*Dry fasting* lebih ekstrem karena tanpa air. Tidak untuk pemula. Di bot ini dibatasi maksimal 48 jam dulu, dan sebaiknya hanya setelah pengalaman cukup serta kondisi tubuh aman.\n\n" +
 		"Kunci: tambah durasi sedikit-sedikit. Kalau tubuh protes, turun level dulu. Konsisten > ekstrem. 💪"
 }

@@ -170,30 +170,32 @@ func (h *CommandHandler) processCommand(phone, jid, text string) (string, error)
 	case "/jadwalkan":
 		return h.handleDeprecatedJadwalkan(phone, args)
 
-	case "/if-168":
-		return h.handlePuasa(phone, []string{"16"})
-	case "/if-186":
-		return h.handlePuasa(phone, []string{"18"})
-	case "/if-204":
-		return h.handlePuasa(phone, []string{"20"})
+	case "/if-1212":
+		return h.handlePuasa(phone, append([]string{"12"}, args...))
 	case "/if-1410":
-		return h.handlePuasa(phone, []string{"14"})
+		return h.handlePuasa(phone, append([]string{"14"}, args...))
+	case "/if-168":
+		return h.handlePuasa(phone, append([]string{"16"}, args...))
+	case "/if-186":
+		return h.handlePuasa(phone, append([]string{"18"}, args...))
+	case "/if-204":
+		return h.handlePuasa(phone, append([]string{"20"}, args...))
 	case "/omad":
-		return h.handlePuasa(phone, []string{"22"})
+		return h.handlePuasa(phone, append([]string{"22"}, args...))
 	case "/water-24":
-		return h.handlePuasa(phone, []string{"24"})
+		return h.handlePuasa(phone, append([]string{"24"}, args...))
 	case "/water-36":
-		return h.handlePuasa(phone, []string{"36"})
+		return h.handlePuasa(phone, append([]string{"36"}, args...))
 	case "/water-48":
-		return h.handlePuasa(phone, []string{"48"})
+		return h.handlePuasa(phone, append([]string{"48"}, args...))
 	case "/water-56":
-		return h.handlePuasa(phone, []string{"56"})
+		return h.handlePuasa(phone, append([]string{"56"}, args...))
 	case "/water-64":
-		return h.handlePuasa(phone, []string{"64"})
+		return h.handlePuasa(phone, append([]string{"64"}, args...))
 	case "/water-72":
-		return h.handlePuasa(phone, []string{"72"})
+		return h.handlePuasa(phone, append([]string{"72"}, args...))
 	case "/dry-24":
-		return h.handlePuasaDry(phone, []string{"24"})
+		return h.handlePuasaDry(phone, append([]string{"24"}, args...))
 
 	case "/status":
 		return h.callUsecase(phone, "GetStatus", func() (string, error) {
@@ -367,45 +369,57 @@ func (h *CommandHandler) handleBuka(phone string, args []string) (string, error)
 }
 
 func (h *CommandHandler) handlePuasa(phone string, args []string) (string, error) {
-	durationHours := 16
-	if len(args) >= 1 {
-		d, err := strconv.Atoi(args[0])
-		if err != nil {
-			return "❌ Durasi harus angka. Contoh: /puasa 16", nil
-		}
-		durationHours = d
+	if len(args) == 0 {
+		return "❌ Durasi harus diisi. Gunakan: /puasa [durasi] [jam] [tanggal jam]\nContoh:\n  /puasa 16\n  /puasa 16 05:00\n  /puasa 16 14-06-2026 19:30", nil
 	}
-	var startTime string
-	if len(args) >= 2 {
-		startTime = args[1]
+	durationHours, err := strconv.Atoi(args[0])
+	if err != nil {
+		return "❌ Durasi harus angka. Contoh: /puasa 16", nil
 	}
-	if len(args) > 2 {
-		return "❌ Format salah. Gunakan: /puasa [durasi] [jam]\nContoh: /puasa 16 atau /puasa 16 05:00", nil
+
+	switch len(args) {
+	case 1:
+		return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
+			return h.usecase.SetFastingByDuration(phone, durationHours, false, "")
+		})
+	case 2:
+		return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
+			return h.usecase.SetFastingByDuration(phone, durationHours, false, args[1])
+		})
+	case 3:
+		return h.callUsecase(phone, "ScheduleFastingByDuration", func() (string, error) {
+			return h.usecase.ScheduleFastingByDuration(phone, durationHours, false, args[1], args[2])
+		})
+	default:
+		return "❌ Terlalu banyak argumen. Maksimal format: /puasa <durasi> <tanggal> <jam>\nContoh: /puasa 16 14-06-2026 19:30", nil
 	}
-	return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
-		return h.usecase.SetFastingByDuration(phone, durationHours, false, startTime)
-	})
 }
 
 func (h *CommandHandler) handlePuasaDry(phone string, args []string) (string, error) {
-	durationHours := 16
-	if len(args) >= 1 {
-		d, err := strconv.Atoi(args[0])
-		if err != nil {
-			return "❌ Durasi harus angka. Contoh: /puasa-dry 16", nil
-		}
-		durationHours = d
+	if len(args) == 0 {
+		return "❌ Durasi harus diisi. Gunakan: /puasa-dry [durasi] [jam] [tanggal jam]\nContoh:\n  /puasa-dry 18\n  /puasa-dry 18 05:00\n  /puasa-dry 18 14-06-2026 05:00", nil
 	}
-	var startTime string
-	if len(args) >= 2 {
-		startTime = args[1]
+	durationHours, err := strconv.Atoi(args[0])
+	if err != nil {
+		return "❌ Durasi harus angka. Contoh: /puasa-dry 18", nil
 	}
-	if len(args) > 2 {
-		return "❌ Format salah. Gunakan: /puasa-dry [durasi] [jam]\nContoh: /puasa-dry 16 atau /puasa-dry 16 05:00", nil
+
+	switch len(args) {
+	case 1:
+		return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
+			return h.usecase.SetFastingByDuration(phone, durationHours, true, "")
+		})
+	case 2:
+		return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
+			return h.usecase.SetFastingByDuration(phone, durationHours, true, args[1])
+		})
+	case 3:
+		return h.callUsecase(phone, "ScheduleFastingByDuration", func() (string, error) {
+			return h.usecase.ScheduleFastingByDuration(phone, durationHours, true, args[1], args[2])
+		})
+	default:
+		return "❌ Terlalu banyak argumen. Maksimal format: /puasa-dry <durasi> <tanggal> <jam>\nContoh: /puasa-dry 18 14-06-2026 05:00", nil
 	}
-	return h.callUsecase(phone, "SetFastingByDuration", func() (string, error) {
-		return h.usecase.SetFastingByDuration(phone, durationHours, true, startTime)
-	})
 }
 
 func (h *CommandHandler) handleJadwal(phone string, args []string, isDry bool) (string, error) {
@@ -432,7 +446,8 @@ func (h *CommandHandler) handleDeprecatedSetPuasa(phone string, args []string) (
 	}
 	notice := "ℹ️ *Info:* Command lama `/set-puasa` masih berfungsi, tapi sekarang sudah lebih simpel pakai `/puasa`:\n" +
 		"• `/puasa 16` — mulai 16 jam dari sekarang\n" +
-		"• `/puasa 16 05:00` — mulai jam 5, durasi 16 jam\n\n"
+		"• `/puasa 16 05:00` — mulai jam 5, durasi 16 jam\n" +
+		"• `/puasa 16 14-06-2026 19:30` — jadwalkan ke tanggal & jam tertentu\n\n"
 	return notice + resp, nil
 }
 
@@ -441,8 +456,9 @@ func (h *CommandHandler) handleDeprecatedJadwalkan(phone string, args []string) 
 	if err != nil {
 		return resp, err
 	}
-	notice := "ℹ️ *Info:* Command lama `/jadwalkan` masih berfungsi, tapi sekarang sudah lebih simpel pakai `/jadwal`:\n" +
-		"• `/jadwal 16 20-06-2026 05:00` — jadwalkan 16 jam\n\n"
+	notice := "ℹ️ *Info:* Command lama `/jadwalkan` masih berfungsi, tapi sekarang bisa lebih simpel:\n" +
+		"• `/puasa 16 14-06-2026 19:30` — jadwalkan 16 jam\n" +
+		"• `/jadwal 16 20-06-2026 05:00` — alternatif via /jadwal\n\n"
 	return notice + resp, nil
 }
 
@@ -451,7 +467,7 @@ func getHelpText() string {
 
 ✨ *4 Perintah Utama:*
 1️⃣ */puasa [durasi] [jam]* — Mulai puasa, default 16 jam dari sekarang
-2️⃣ */jadwal <durasi> <tanggal> <jam>* — Jadwalkan untuk tanggal tertentu
+2️⃣ */puasa [durasi] [tanggal] [jam]* — Jadwalkan untuk tanggal+j jam tertentu
 3️⃣ */buka* — Catat buka puasa sekarang
 4️⃣ */buka <tanggal> <jam>* — Catat buka puasa di waktu yang lalu (kalau lupa)
 
@@ -469,20 +485,26 @@ func getHelpText() string {
 /bantuan — Tampilkan bantuan ini
 /info — Info bot
 
-⚡ *Preset Cepat:*
-/if-168, /if-186, /if-204, /if-1410
-/omad, /water-24, /water-36, /water-48
-/water-56, /water-64, /water-72
-/dry-24
+⚡ *Preset Cepat — dari Pemula sampai Advanced:*
+🌱 /if-1212, /if-1410   (IF ringan)
+🔥 /if-168, /if-186, /if-204, /omad
+💧 /water-24, /water-36, /water-48, /water-56, /water-64, /water-72
+⚠️ /dry-24
+
+💡 *Semua preset bisa dikasih waktu:*
+/if-168 19:30   — mulai jam 7:30 malam
+/water-48 14-06-2026 20:00   — jadwalkan 48 jam ke tanggal tertentu
 
 💡 *Contoh praktis:*
 /daftar kyomel
-/puasa 16                  (IF 16 jam dari sekarang)
-/puasa 16 05:00            (IF 16 jam mulai jam 5)
-/puasa-dry 18              (Dry Fasting 18 jam dari sekarang)
+/puasa 16                        (IF 16 jam dari sekarang)
+/puasa 16 05:00                  (IF 16 jam mulai jam 5)
+/puasa 16 14-06-2026 19:30       (jadwalkan 16 jam, tgl 14 Juni jam 19:30)
+/puasa-dry 18                    (Dry Fasting 18 jam dari sekarang)
+/puasa-dry 18 14-06-2026 08:00   (dry dijadwalkan)
 /jadwal 16 20-06-2026 05:00
-/buka                       (buka sekarang)
-/buka 23-05-2026 18:30      (buka jam 18:30 tadi)
+/buka                            (buka sekarang)
+/buka 23-05-2026 18:30           (buka jam 18:30 tadi)
 
 Konsisten dikit-dikit, hasilnya luar biasa. Yuk mulai! 💪`
 }

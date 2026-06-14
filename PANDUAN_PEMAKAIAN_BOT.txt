@@ -13,204 +13,169 @@ ALUR PALING SEDERHANA
    Contoh:
    /daftar kyomel
 
-2. Lihat daftar jenis puasa:
-   /list-puasa
+2. Mulai puasa dari sekarang:
+   /puasa <durasi>
 
-3. Pilih puasa dari nomor yang tersedia, lalu set jam mulai:
-   /set-puasa <nomor> <jam_mulai>
+   Contoh IF 16:8:
+   /puasa 16
 
-   Contoh untuk IF 16:8:
-   /set-puasa 3 05:00
+3. Mulai puasa dengan jam tertentu (waktu ke depan):
+   /puasa <durasi> <jam>
 
-4. Untuk Water Fasting, Dry Fasting, atau Prolonged Fasting, tambahkan durasi jam:
-   /set-puasa <nomor> <jam_mulai> <durasi_jam>
+   Contoh IF 16:8 mulai jam 5:
+   /puasa 16 05:00
 
-   Contoh Water Fasting 48 jam:
-   /set-puasa 8 05:00 48
+4. Jadwalkan puasa ke tanggal & jam tertentu:
+   /puasa <durasi> <tanggal> <jam>
 
-   Contoh Dry Fasting 18 jam:
-   /set-puasa 9 05:00 18
+   Format: /puasa 16 14-06-2026 19:30
+   Artinya: 16 jam, mulai 14 Juni 2026 jam 19:30
 
-   Contoh Prolonged Fasting metode water fasting 96 jam:
-   /set-puasa 10 05:00 96
+5. Preset cepat — ketik langsung durasi tetap:
+   /if-1212     → 12:12, IF ringan
+   /if-1410     → 14:10, sweet spot pemula
+   /if-168      → 16:8, IF paling populer
+   /if-186      → 18:6, intermediate
+   /if-204      → 20:4, advanced
+   /omad        → 22 jam, satu kali makan
+   /water-24    → 24 jam water fasting
+   /water-36, /water-48, /water-56, /water-64, /water-72
+   /dry-24      → 24 jam dry fasting
 
-5. Jika ingin menjadwalkan puasa dari daftar dengan tanggal khusus:
-   /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
+   Semua preset bisa dikasih jam atau tanggal:
+   /if-168 19:30 — mulai jam 7:30 malam
+   /water-48 14-06-2026 20:00 — 48 jam dari tgl 14 Juni jam 20:00
 
-   Format /jadwalkan mengikuti /set-puasa, jadi harus memakai nomor puasa. Jangan pakai WF/DF di /jadwalkan.
+6. Dry fasting:
+   /puasa-dry 18             — 18 jam dari sekarang
+   /puasa-dry 18 05:00       — mulai jam 5
+   /puasa-dry 18 14-06-2026 05:00 — jadwalkan
 
-   Contoh IF 16:8 pada tanggal tertentu:
-   /jadwalkan 3 23-05-2026 16:00
-
-   Contoh Water Fasting 48 jam pada tanggal tertentu:
-   /jadwalkan 8 23-05-2026 16:00 48
-
-   /jadwalkan juga boleh memakai tanggal/jam yang sudah lewat untuk restore progres setelah data aktif ter-reset.
-
-6. Cek status:
+7. Cek status:
    /status
 
-7. Batalkan atau buka puasa hari ini:
+8. Buka puasa (catat selesai):
    /buka
-
-   Jika lupa mengirim /buka tepat waktu, masukkan tanggal dan jam berbuka yang sebenarnya:
-   /buka DD-MM-YYYY HH:MM
-
-   Contoh:
+   Jika lupa tepat waktu:
    /buka 23-05-2026 18:30
 
-   Jika puasa sudah mulai, bot mencatat total waktu puasa ke /stats.
-   Jika /buka dilakukan sebelum jam mulai puasa, jadwal dibatalkan tetapi durasi tidak dihitung.
-
-8. Batalkan jadwal puasa aktif jika ingin mengosongkan status:
+9. Batalkan jadwal:
    /batalkan
 
-   Setelah /batalkan, saat cek /status jadwal puasa tidak akan tampil lagi.
-
-9. Lihat statistik puasa pribadi:
-   /stats
-
-10. Lihat klasemen puasa berdasarkan total waktu puasa:
+10. Cek statistik & leaderboard:
+    /stats
     /leaderboard
 
 
 DAFTAR JENIS PUASA SAAT INI
 ---------------------------
-1. IF 12:12
-   Puasa 12 jam, makan 12 jam
-   Cara set: /set-puasa 1 05:00
+1. IF 12:12 — Puasa 12 jam, makan 12 jam
+   Preset: /if-1212   |   Manual: /puasa 12
 
-2. IF 14:10
-   Puasa 14 jam, makan 10 jam
-   Cara set: /set-puasa 2 05:00
+2. IF 14:10 — Puasa 14 jam, makan 10 jam
+   Preset: /if-1410   |   Manual: /puasa 14
 
-3. IF 16:8
-   Puasa 16 jam, makan 8 jam
-   Cara set: /set-puasa 3 05:00
+3. IF 16:8 — Puasa 16 jam, makan 8 jam (paling populer)
+   Preset: /if-168    |   Manual: /puasa 16
 
-4. IF 18:6
-   Puasa 18 jam, makan 6 jam
-   Cara set: /set-puasa 4 05:00
+4. IF 18:6 — Puasa 18 jam, makan 6 jam
+   Preset: /if-186    |   Manual: /puasa 18
 
-5. IF 20:4
-   Puasa 20 jam, makan 4 jam
-   Cara set: /set-puasa 5 05:00
+5. IF 20:4 — Puasa 20 jam, makan 4 jam
+   Preset: /if-204    |   Manual: /puasa 20
 
-6. OMAD-1
-   One Meal A Day - Puasa 22 jam
-   Cara set: /set-puasa 6 05:00
+6. OMAD — One Meal A Day, puasa 22 jam
+   Preset: /omad      |   Manual: /puasa 22
 
-7. OMAD-2
-   One Meal A Day - Puasa 23 jam
-   Cara set: /set-puasa 7 05:00
+7. Water Fasting 24 jam
+   Preset: /water-24  |   Manual: /puasa 24
 
-8. Water Fasting
-   Puasa air - pilih durasi 24, 36, 48, atau 72 jam
-   Cara set: /set-puasa 8 05:00 48
+8. Water Fasting 36 jam
+   Preset: /water-36  |   Manual: /puasa 36
 
-9. Dry Fasting
-   Puasa kering - bebas tentukan durasi
-   Cara set: /set-puasa 9 05:00 18
+9. Water Fasting 48 jam
+   Preset: /water-48  |   Manual: /puasa 48
 
-10. Prolonged Fasting (Bebas)
-    Puasa panjang metode water fasting, minimal 24 jam
-    Cara set: /set-puasa 10 05:00 96
+10. Water Fasting 56 jam
+    Preset: /water-56 |   Manual: /puasa 56
+
+11. Water Fasting 64 jam
+    Preset: /water-64 |   Manual: /puasa 64
+
+12. Water Fasting 72 jam
+    Preset: /water-72 |   Manual: /puasa 72
+
+13. Dry Fasting (tanpa air) — maksimal 48 jam dulu
+    Preset: /dry-24   |   Manual: /puasa-dry <durasi>
+
+Mau lebih dari 72 jam? Bot membatasi 168 jam (7 hari).
+Format: /puasa 96 14-06-2026 06:00
+Hanya untuk yang sudah terbiasa — konsultasi dokter dulu.
 
 
-JADWAL TANGGAL KHUSUS DENGAN /jadwalkan
----------------------------------------
-Gunakan /jadwalkan jika anggota grup ingin membuat jadwal puasa dari daftar /list-puasa dengan tanggal mulai tertentu. Formatnya mirip /set-puasa, tetapi ditambah tanggal. Command ini boleh memakai waktu lampau untuk memulihkan progres setelah data aktif ter-reset.
+FORMAT COMMAND BARU — /puasa & /puasa-dry
+-----------------------------------------
+Format paling simpel untuk mulai puasa:
 
-Format:
+1. /puasa <durasi>                    → mulai dari sekarang
+   Contoh: /puasa 16     (16 jam dari sekarang)
+
+2. /puasa <durasi> <jam>              → mulai jam tertentu (waktu ke depan)
+   Contoh: /puasa 16 05:00  (16 jam mulai jam 5 pagi)
+
+3. /puasa <durasi> <tanggal> <jam>    → jadwalkan ke tanggal & jam
+   Contoh: /puasa 16 14-06-2026 19:30
+
+Format yang sama berlaku untuk /puasa-dry:
+   /puasa-dry 18
+   /puasa-dry 18 05:00
+   /puasa-dry 18 14-06-2026 05:00
+
+Untuk /jadwal (alternatif scheduling):
+   /jadwal <durasi> <tanggal> <jam>
+   Contoh: /jadwal 16 20-06-2026 05:00
+
+COMMAND LAMA (masih berfungsi)
+-------------------------------
+/set-puasa <nomor> <jam_mulai> [durasi_jam]
 /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
-
-Keterangan:
-- Nomor mengikuti daftar /list-puasa
-- Tanggal memakai format DD-MM-YYYY
-- Jam memakai format HH:MM
-- Nomor 1-7 tidak perlu durasi
-- Nomor 8-10 wajib memakai durasi jam
-- Jangan pakai WF/DF di /jadwalkan. Untuk Water Fasting gunakan nomor 8, untuk Dry Fasting gunakan nomor 9.
-
-Contoh:
-/jadwalkan 3 23-05-2026 16:00
-
-Artinya:
-- Jenis: IF 16:8
-- Mulai: 23-05-2026 16:00
-- Selesai: 24-05-2026 08:00
-- Durasi: 16 jam
-
-Contoh lain:
-/jadwalkan 8 23-05-2026 16:00 48
-
-Artinya:
-- Jenis: Water Fasting 48 jam
-- Mulai: 23-05-2026 16:00
-- Selesai: 25-05-2026 16:00
-- Durasi: 48 jam
-
 
 DAFTAR COMMAND
 --------------
-/daftar <nama>
-Daftar sebagai user.
-
-/setname <nama>
-Ubah nama user yang sudah terdaftar.
-
-/list-puasa
-Lihat daftar jenis puasa dan contoh cara memilihnya.
-
-/set-puasa <nomor> <jam_mulai> [durasi_jam]
-Pilih jenis puasa dari daftar.
-
-/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
-Jadwalkan puasa dari daftar dengan tanggal khusus. Formatnya mengikuti /set-puasa dan wajib memakai nomor. Boleh memakai waktu lampau untuk restore progres.
-
-/status
-Cek status akun dan jadwal puasa. Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan jika puasa sudah mulai.
-
-/buka
-Batalkan atau buka puasa hari ini. Jika puasa sudah mulai, bot mencatat total waktu puasa dalam format hari, jam, dan menit ke /stats. Jika lupa mencatat jam berbuka, gunakan /buka DD-MM-YYYY HH:MM, contoh /buka 23-05-2026 18:30.
-
-/batalkan
-Batalkan jadwal puasa aktif. Setelah dibatalkan, /status akan menampilkan belum ada jadwal fasting.
-
-/stats
-Lihat statistik hasil /buka: total sesi, streak puasa, total waktu puasa, dan durasi terakhir.
-
-/leaderboard
-Lihat klasemen puasa berdasarkan total waktu puasa. Klasemen menampilkan nama user, streak puasa, dan total waktu puasa.
-
-/bantuan
-Tampilkan bantuan dari bot.
-
-/info
-Tampilkan info bot.
+/daftar <nama> — Daftar sebagai user
+/setname <nama> — Ubah nama
+/puasa [durasi] [jam] [tanggal jam] — Mulai atau jadwalkan puasa
+/puasa-dry [durasi] [jam] [tanggal jam] — Dry fasting
+/jadwal <durasi> <tanggal> <jam> — Jadwalkan alternatif
+/panduan — Panduan edukatif + daftar preset lengkap
+/pemula — Panduan IF bertahap dari 12 jam
+/status — Cek status puasa
+/motivasi — Suntikan semangat sesuai fase puasa
+/buka [tanggal jam] — Catat buka puasa
+/batalkan — Batalkan jadwal aktif
+/stats — Statistik pribadi
+/badge — Koleksi badge
+/leaderboard — Klasemen puasa grup
+/bantuan — Bantuan command
+/info — Info bot
 
 
 CATATAN FORMAT
 --------------
 - Format jam harus HH:MM, contoh: 05:00 atau 18:30.
-- Nomor puasa harus sesuai daftar 1-10.
-- Nomor 1-7 tidak perlu isi durasi karena durasinya sudah tetap.
-- Nomor 8 harus memakai durasi 24, 36, 48, atau 72 jam.
-- Nomor 9 minimal 1 jam.
-- Nomor 10 adalah Prolonged Fasting metode water fasting, minimal 24 jam.
-- Untuk /jadwalkan, format tanggal adalah DD-MM-YYYY, contoh: 23-05-2026.
-- Untuk /jadwalkan, nomor puasa mengikuti daftar 1-10 seperti /set-puasa. Jangan pakai kode WF/DF di /jadwalkan; gunakan nomor 8 untuk Water Fasting dan nomor 9 untuk Dry Fasting.
-- Untuk /jadwalkan, tanggal dan jam mulai boleh sebelum waktu sekarang untuk restore progres. Jika waktu mulai sudah lewat, bot tidak mengirim ulang notifikasi mulai.
-- Untuk /set-puasa, jam mulai wajib waktu sekarang atau waktu ke depan. Jika jam mulai hari ini sudah lewat dari waktu sekarang, bot otomatis menjadwalkan mulai besok di jam tersebut.
-- Jika jam mulai /set-puasa sama dengan menit sekarang, bot menganggap jadwal mulai sekarang.
-- Saat waktu selesai puasa tiba, bot akan mengirim notifikasi bahwa puasa sudah selesai dan sudah waktunya berbuka.
-- Untuk /buka, total waktu puasa dihitung dari jam mulai sampai waktu /buka dalam format hari, jam, dan menit.
-- Untuk /buka manual, formatnya /buka DD-MM-YYYY HH:MM, contoh: /buka 23-05-2026 18:30. Waktu buka tidak boleh di masa depan dan tidak boleh sebelum jam mulai puasa.
+- Format tanggal harus DD-MM-YYYY, contoh: 14-06-2026.
+- /puasa 1 arg (durasi saja) = mulai dari sekarang.
+- /puasa 2 arg (durasi + jam) = mulai jam tersebut. Jika jam sudah lewat hari ini, otomatis besok.
+- /puasa 3 arg (durasi + tanggal + jam) = jadwalkan ke tanggal & jam tertentu (bisa mundur).
+- Semua preset (/if-168, /water-48, dll) bisa didikuti waktu: /if-168 19:30 atau /if-168 14-06-2026 19:30.
+- Dry fasting via /puasa-dry, maksimal 48 jam.
+- Durasi puasa via /puasa: 1-168 jam.
+- Untuk /buka, format /buka DD-MM-YYYY HH:MM untuk catat buka di waktu lampau (kalau lupa).
+- Waktu buka tidak boleh di masa depan dan tidak boleh sebelum jam mulai puasa.
 - Jika /buka dilakukan sebelum jam mulai puasa, durasi tidak dihitung ke /stats.
-- /stats hanya menampilkan hasil puasa yang sudah dicatat lewat /buka setelah puasa dimulai. Data progres total disimpan sebagai ringkasan permanen, bukan bergantung pada riwayat mentah.
-- /leaderboard diurutkan berdasarkan total waktu puasa terbesar dan memakai data ringkasan permanen.
-- Bot menjalankan pembersihan otomatis setiap 3 hari untuk menghapus riwayat mentah lama dan jadwal nonaktif lama supaya database tetap ringan. Pembersihan ini tidak mengurangi total /stats atau /leaderboard, dan tidak menghapus data user yang masih punya jadwal puasa aktif.
-- Streak puasa bertambah 1 setiap /buka yang dilakukan pada atau setelah jam selesai puasa yang ditentukan. Jika /buka dilakukan sebelum jadwal selesai, total durasi tetap masuk /stats, tetapi streak tidak bertambah.
-- Jika lewat 24 jam dari /buka terakhir yang memenuhi jadwal dan tidak ada puasa aktif yang sedang berjalan, streak saat ini otomatis kembali ke 0 saat /stats atau /leaderboard dibuka.
-- Balasan bot dan /status akan menampilkan jenis puasa, tanggal dan jam mulai, tanggal dan jam selesai, serta durasi berjalan jika puasa sudah mulai agar mudah dipahami.
-- Gunakan /batalkan jika ingin membatalkan jadwal aktif supaya /status tidak lagi menampilkan jadwal puasa.
+- Saat waktu selesai puasa tiba, bot mengirim notifikasi.
+- Streak bertambah 1 setiap /buka yang dilakukan pada atau setelah jam selesai.
+- Jika lewat 24 jam dari /buka terakhir dan tidak ada puasa aktif, streak reset ke 0.
+- /stats menampilkan ringkasan permanen; data mentah dibersihkan tiap 3 hari.
+- /leaderboard diurutkan berdasarkan total waktu puasa terbesar.
+- Gunakan /batalkan untuk menghapus jadwal aktif dari /status.

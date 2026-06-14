@@ -79,7 +79,7 @@ func TestPemulaCommandReturnsBeginnerGuide(t *testing.T) {
 		t.Fatalf("processCommand(/pemula) returned error: %v", err)
 	}
 
-	for _, want := range []string{"Panduan IF untuk Pemula", "/puasa 12", "Dry fasting", "maksimal 48 jam"} {
+	for _, want := range []string{"Panduan IF untuk Pemula", "/puasa 12", "Dry fasting", "maksimal 48 jam", "/if-1212"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("/pemula response should contain %q, got: %q", want, got)
 		}
@@ -101,7 +101,7 @@ func TestListPuasaCommandIsRemoved(t *testing.T) {
 func TestPanduanIncludesWaterFastingQuickCommands(t *testing.T) {
 	guide := domain.GetPanduan()
 
-	for _, want := range []string{"/water-24", "/water-36", "/water-48", "/water-56", "/water-64", "/water-72"} {
+	for _, want := range []string{"/water-24", "/water-36", "/water-48", "/water-56", "/water-64", "/water-72", "/if-1212", "/if-1410", "/if-168", "/if-186", "/if-204", "/omad", "Preset Cepat"} {
 		if !strings.Contains(guide, want) {
 			t.Fatalf("panduan should contain %q, got: %q", want, guide)
 		}
