@@ -135,18 +135,19 @@ Untuk /jadwal (alternatif scheduling):
    /jadwal <durasi> <tanggal> <jam>
    Contoh: /jadwal 16 20-06-2026 05:00
 
-COMMAND LAMA (masih berfungsi)
--------------------------------
-/set-puasa <nomor> <jam_mulai> [durasi_jam]
-/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]
+COMMAND LAMA (deprecated, masih berfungsi)
+--------------------------------------------
+/set-puasa <nomor> <jam_mulai> [durasi_jam]  →  pakai /puasa <durasi> <jam>
+/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]  →  pakai /puasa <durasi> <tanggal> <jam>
 
 DAFTAR COMMAND
 --------------
 /daftar <nama> — Daftar sebagai user
 /setname <nama> — Ubah nama
-/puasa [durasi] [jam] [tanggal jam] — Mulai atau jadwalkan puasa
-/puasa-dry [durasi] [jam] [tanggal jam] — Dry fasting
-/jadwal <durasi> <tanggal> <jam> — Jadwalkan alternatif
+/puasa [durasi] [jam] [tanggal jam] — Mulai atau jadwalkan puasa (format utama)
+/puasa-dry [durasi] [jam] [tanggal jam] — Dry fasting (maks 48 jam, format sama dengan /puasa)
+/jadwal <durasi> <tanggal> <jam> — Jadwalkan alternatif (format sama dengan /puasa 3 arg)
+/jadwal-dry <durasi> <tanggal> <jam> — Jadwalkan dry fasting (maks 48 jam)
 /panduan — Panduan edukatif + daftar preset lengkap
 /pemula — Panduan IF bertahap dari 12 jam
 /status — Cek status puasa
@@ -166,7 +167,7 @@ CATATAN FORMAT
 - Format tanggal harus DD-MM-YYYY, contoh: 14-06-2026.
 - /puasa 1 arg (durasi saja) = mulai dari sekarang.
 - /puasa 2 arg (durasi + jam) = mulai jam tersebut. Jika jam sudah lewat hari ini, otomatis besok.
-- /puasa 3 arg (durasi + tanggal + jam) = jadwalkan ke tanggal & jam tertentu (bisa mundur).
+- /puasa 3 arg (durasi + tanggal + jam) = jadwalkan ke tanggal & jam tertentu (bisa mundur atau ke depan; dipakai juga untuk restore progres).
 - Semua preset (/if-168, /water-48, dll) bisa didikuti waktu: /if-168 19:30 atau /if-168 14-06-2026 19:30.
 - Dry fasting via /puasa-dry, maksimal 48 jam.
 - Durasi puasa via /puasa: 1-168 jam.

@@ -299,7 +299,7 @@ func errorLabel(method string) string {
 
 func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, error) {
 	if len(args) < 2 {
-		return "❌ Format salah.\n\nIF & OMAD (1-7): /set-puasa <nomor> <jam_mulai>\nContoh: /set-puasa 3 05:00\n\nWater/Dry/Prolonged (8-10): /set-puasa <nomor> <jam_mulai> <durasi_jam>\nContoh: /set-puasa 8 05:00 48\n\nJadwal tanggal khusus: /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]\nContoh: /jadwalkan 3 23-05-2026 16:00", nil
+		return "❌ Format salah.\n\nCara baru (direkomendasikan):\n• /puasa <durasi> — mulai dari sekarang\n• /puasa <durasi> <jam> — mulai jam tertentu\n• /puasa <durasi> <tanggal> <jam> — jadwalkan (format tanggal DD-MM-YYYY)\n\nContoh: /puasa 16 05:00 atau /puasa 16 14-06-2026 19:30", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])
@@ -327,26 +327,26 @@ func (h *CommandHandler) handleSetPuasa(phone string, args []string) (string, er
 
 func (h *CommandHandler) handleJadwalkan(phone string, args []string) (string, error) {
 	if len(args) < 3 {
-		return "❌ Format salah.\nGunakan nomor puasa seperti /set-puasa: /jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]\nContoh IF: /jadwalkan 3 23-05-2026 16:00\nContoh Water Fasting: /jadwalkan 8 23-05-2026 16:00 48", nil
+		return "❌ Format salah.\nGunakan cara baru: /puasa <durasi> DD-MM-YYYY HH:MM\nContoh: /puasa 16 23-05-2026 16:00 atau /puasa 48 23-05-2026 16:00", nil
 	}
 
 	if strings.EqualFold(args[0], "WF") || strings.EqualFold(args[0], "DF") {
-		return "❌ /jadwalkan harus pakai nomor 1-10, bukan WF/DF.\nWater Fasting pakai nomor 8, Dry Fasting pakai nomor 9.\nContoh: /jadwalkan 8 23-05-2026 16:00 48", nil
+		return "❌ WF/DF sudah tidak dipakai. Gunakan cara baru: /puasa <durasi> DD-MM-YYYY HH:MM (water ≤ 168 jam, dry ≤ 48 jam).", nil
 	}
 
 	typeID, err := strconv.Atoi(args[0])
 	if err != nil || typeID < 1 || typeID > 10 {
-		return "❌ Nomor puasa tidak valid. Pilih 1-10. Untuk flow baru, gunakan /jadwal 16 23-05-2026 05:00 atau baca /panduan.", nil
+		return "❌ Nomor puasa tidak valid. Pilih 1-10. Untuk flow baru, gunakan /puasa 16 23-05-2026 05:00 atau baca /panduan.", nil
 	}
 
 	durationHours := 0
 	if typeID >= 8 {
 		if len(args) < 4 {
-			return "❌ Durasi jam wajib untuk Water/Dry/Prolonged Fasting.\nContoh: /jadwalkan 8 23-05-2026 16:00 48", nil
+			return "❌ Durasi jam wajib untuk Water/Dry/Prolonged Fasting.\nGunakan cara baru: /puasa <durasi> DD-MM-YYYY HH:MM\nContoh: /puasa 48 23-05-2026 16:00", nil
 		}
 		durationHours, err = strconv.Atoi(args[3])
 		if err != nil {
-			return "❌ Durasi jam harus angka.\nContoh: /jadwalkan 8 23-05-2026 16:00 48", nil
+			return "❌ Durasi jam harus angka.\nGunakan cara baru: /puasa <durasi> DD-MM-YYYY HH:MM", nil
 		}
 	}
 

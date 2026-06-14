@@ -104,7 +104,7 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 		"1️⃣ /panduan — baca ringkas jenis puasa & cara pakai bot\n"+
 		"2️⃣ /puasa 14 atau /puasa 16 — mulai dari sekarang\n"+
 		"3️⃣ /puasa 16 05:00 — mulai jam 5, durasi 16 jam\n"+
-		"4️⃣ /jadwal 16 23-05-2026 05:00 — jadwalkan ke tanggal tertentu\n\n"+
+		"4️⃣ /puasa 16 23-05-2026 05:00 — jadwalkan ke tanggal tertentu\n\n"+
 		"Saran buat pemula: mulai dari IF 14:10 atau IF 16:8. Body adaptation lebih halus. 💪", name, user.ID, phone), nil
 }
 
@@ -187,7 +187,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 			"Atur sekarang:\n"+
 			"• */panduan* — baca panduan ringkas\n"+
 			"• */puasa 16* — mulai 16 jam dari sekarang\n"+
-			"• */jadwal 16 23-05-2026 05:00* — set untuk tanggal tertentu", user.ID, name, user.Phone), nil
+			"• */puasa 16 23-05-2026 05:00* — jadwalkan ke tanggal tertentu", user.ID, name, user.Phone), nil
 	}
 	fastingTypeName := schedule.FastingTypeName
 	if fastingTypeName == "" {
@@ -369,7 +369,7 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 			"Buka sebelum target — streak belum naik, tapi durasi tetap masuk stats. Semua jam puasa = waktu insulin rendah = manfaat tetap.\n\n"+
 			"%s"+
 			"🥗 *Cara buka yang ramah tubuh:*\n%s\n\n"+
-			"Konsistensi > kesempurnaan. Set jadwal berikutnya: /set-puasa atau /jadwalkan 🌱",
+			"Konsistensi > kesempurnaan. Set jadwal berikutnya: /puasa atau /puasa-dry 🌱",
 		displayFastingTypeName(schedule.FastingTypeName),
 		formatDisplayTime(startTime),
 		formatDisplayTime(plannedEndTime),
@@ -623,7 +623,7 @@ func (u *fastingUsecase) SetFastingType(phone string, typeID int, startTime stri
 func (u *fastingUsecase) ScheduleFastingType(phone string, typeID int, dateInput, startTime string, durationHours int) (string, error) {
 	startDateTime, err := time.ParseInLocation(inputDateLayout+" "+clockLayout, dateInput+" "+startTime, config.Location)
 	if err != nil {
-		return "❌ Format jadwal salah. Gunakan: /jadwalkan <nomor> DD-MM-YYYY HH:MM [durasi_jam]\nContoh: /jadwalkan 3 23-05-2026 16:00", nil
+		return "❌ Format jadwal salah. Gunakan: /puasa <durasi> DD-MM-YYYY HH:MM\nContoh: /puasa 16 23-05-2026 16:00", nil
 	}
 	return u.saveFastingTypeSchedule(phone, typeID, startDateTime, durationHours, true)
 }

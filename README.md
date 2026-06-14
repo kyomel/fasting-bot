@@ -152,7 +152,6 @@ Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kal
 | `/jadwal-dry <durasi> <tanggal> <jam>` | Jadwalkan dry fasting, maksimal 48 jam | `/jadwal-dry 18 20-06-2026 05:00` |
 | `/water-24`, `/water-36`, `/water-48`, `/water-56`, `/water-64`, `/water-72` | Preset cepat water/prolonged fasting | `/water-56` |
 | `/set-puasa <nomor> <jam> [durasi]` | Pilih jenis puasa dari daftar | `/set-puasa 3 05:00` |
-| `/jadwalkan <nomor> <tanggal> <jam> [durasi]` | Seperti `/set-puasa`, tetapi memakai tanggal eksplisit. Boleh memakai waktu lampau untuk restore progres yang ter-reset. Tidak memakai kode WF/DF | `/jadwalkan 3 23-05-2026 16:00` |
 | `/status` | Cek status fasting, nama, nomor, ID user, jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan durasi puasa yang sedang berjalan | `/status` |
 | `/buka` | Buka puasa / batalkan fasting **sekarang** | `/buka` |
 | `/buka <tanggal> <jam>` | Catat buka puasa di waktu yang sudah lewat (kalau lupa kirim `/buka`) | `/buka 23-05-2026 18:30` |
@@ -191,11 +190,10 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
    - Quick command prolonged/water: `/water-24`, `/water-36`, `/water-48`, `/water-56`, `/water-64`, `/water-72`
    - Contoh: `/set-puasa 9 05:00 18` → Dry Fasting 18 jam dari jam 05:00 (maksimal 48 jam dulu)
    - Contoh: `/set-puasa 10 05:00 96` → Prolonged Fasting metode water fasting 96 jam dari jam 05:00
-4. Jadwalkan puasa dari daftar dengan tanggal khusus: `/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]`
-   - Contoh: `/jadwalkan 3 23-05-2026 16:00` → IF 16:8 dari 23-05-2026 16:00 sampai 24-05-2026 08:00
-   - Contoh: `/jadwalkan 8 23-05-2026 16:00 48` → Water Fasting 48 jam dari 23-05-2026 16:00 sampai 25-05-2026 16:00
-   - `/jadwalkan` selalu memakai nomor seperti `/set-puasa`. Jangan pakai `WF`/`DF` di command ini; Water Fasting pakai nomor 8, Dry Fasting pakai nomor 9.
-   - `/jadwalkan` boleh memakai tanggal/jam yang sudah lewat untuk memulihkan progres setelah data aktif ter-reset. Jika mulai sudah lewat, notifikasi mulai tidak dikirim ulang.
+4. Jadwalkan puasa dari daftar dengan tanggal khusus: `/puasa <durasi> <tanggal> <jam>`
+   - Contoh: `/puasa 16 23-05-2026 16:00` → IF 16 jam dari 23-05-2026 16:00 sampai 24-05-2026 08:00
+   - Contoh: `/puasa 48 23-05-2026 16:00` → Water Fasting 48 jam dari 23-05-2026 16:00 sampai 25-05-2026 16:00
+   - `/puasa 3 arg` boleh memakai tanggal/jam yang sudah lewat untuk memulihkan progres setelah data aktif ter-reset. Jika mulai sudah lewat, notifikasi mulai tidak dikirim ulang.
 5. Cek status jadwal: `/status`
    - Status menampilkan jenis puasa, tanggal/jam mulai, tanggal/jam selesai, dan jika sedang berjalan akan menampilkan sudah berjalan berapa lama.
 6. Buka puasa: `/buka` atau `/buka <tanggal> <jam>`
@@ -210,10 +208,15 @@ Bot mendukung 10 jenis puasa yang bisa dipilih:
    - Setelah `/batalkan`, `/status` akan kembali menampilkan belum ada jadwal fasting.
 
 Catatan waktu:
-- Format tanggal untuk `/jadwalkan` adalah `DD-MM-YYYY`.
+- Format tanggal untuk `/puasa 3 arg`, `/jadwal`, dan `/jadwal-dry` adalah `DD-MM-YYYY`.
 - Format tanggal untuk `/buka` manual adalah `DD-MM-YYYY HH:MM`.
-- `/jadwalkan` mengikuti format nomor `/set-puasa`: nomor 1-7 tanpa durasi, nomor 8-10 wajib durasi. Kode `WF`/`DF` tidak dipakai — gunakan nomor 8 untuk Water Fasting dan nomor 9 untuk Dry Fasting.
-- `/jadwalkan` boleh memakai tanggal/jam mulai yang sudah lewat untuk restore progres. Setelah itu gunakan `/buka` saat benar-benar berbuka supaya durasi masuk ke `/stats`.
+- `/puasa 1 arg` (durasi saja) = mulai dari sekarang.
+- `/puasa 2 arg` (durasi + jam) = mulai jam tersebut. Jika jam sudah lewat hari ini, otomatis besok.
+- `/puasa 3 arg` (durasi + tanggal + jam) = jadwalkan ke tanggal & jam tertentu (bisa mundur/ke depan, dipakai juga untuk restore progres).
+- `/puasa-dry` mengikuti format yang sama dengan `/puasa`, maksimal 48 jam.
+- Durasi puasa via `/puasa` & `/puasa-dry`: 1-168 jam (water/IF), 1-48 jam (dry).
+- `/set-puasa` mengikuti format nomor 1-10: nomor 1-7 tanpa durasi, nomor 8-10 wajib durasi. Kode `WF`/`DF` tidak dipakai — gunakan nomor 8 untuk Water Fasting dan nomor 9 untuk Dry Fasting.
+- `/set-puasa` masih berfungsi sebagai legacy command (deprecated). Cara baru yang direkomendasikan adalah `/puasa`.
 - Jika `/set-puasa` memakai jam mulai yang sudah lewat hari ini, bot otomatis menjadwalkannya untuk besok.
 - Streak puasa bertambah 1 setiap `/buka` yang dilakukan pada atau setelah jam selesai puasa yang ditentukan. Jika `/buka` dilakukan sebelum jadwal selesai, total durasi tetap masuk `/stats`, tetapi streak tidak bertambah.
 - Jika lewat 24 jam dari `/buka` terakhir yang memenuhi jadwal dan tidak ada puasa aktif yang sedang berjalan, streak saat ini otomatis kembali ke 0 saat `/stats` atau `/leaderboard` dibuka.

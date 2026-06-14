@@ -12,12 +12,13 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.22'
 
       - name: Build binary
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq gcc libc6-dev libsqlite3-dev
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o fasting-bot ./cmd/fasting-bot
+          file fasting-bot
 
       - name: Copy files to server
         uses: appleboy/scp-action@master
@@ -36,12 +37,54 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
+
+            # --- WhatsApp session preservation guard ---
+            echo "Backing up WhatsApp session..."
+            sudo cp /opt/fasting-bot/data/whatsapp-session.db /opt/fasting-bot/data/whatsapp-session.db.bak.$(date +%Y%m%d_%H%M%S)
+
+            # --- Backup current binary before replacing ---
+            if [ -f /opt/fasting-bot/fasting-bot ]; then
+              sudo cp /opt/fasting-bot/fasting-bot /opt/fasting-bot/fasting-bot.bak.$(date +%Y%m%d_%H%M%S)
+            fi
+
+            # --- Replace binary and scripts only (never touch data/) ---
+            echo "Deploying new binary and scripts..."
             sudo mv /tmp/deploy/fasting-bot /opt/fasting-bot/fasting-bot
             sudo mv /tmp/deploy/deploy/monitor.sh /opt/fasting-bot/monitor.sh
             sudo mv /tmp/deploy/deploy/fasting-bot.service /etc/systemd/system/fasting-bot.service
-            sudo chown -R fastingbot:fastingbot /opt/fasting-bot
+
+            # --- Fix permissions only on deployed files, never recursively on data ---
+            sudo chown fastingbot:fastingbot /opt/fasting-bot/fasting-bot
             sudo chmod +x /opt/fasting-bot/fasting-bot /opt/fasting-bot/monitor.sh
+            sudo chmod 644 /etc/systemd/system/fasting-bot.service
+
+            # --- Verify binary is Linux ELF before restart ---
+            echo "Verifying binary format..."
+            file /opt/fasting-bot/fasting-bot | grep -q "ELF 64-bit LSB executable" || {
+              echo "ERROR: deployed binary is not Linux ELF";
+              exit 1;
+            }
+
+            # --- Reload and restart service ---
+            echo "Restarting service..."
             sudo systemctl daemon-reload
-            sudo systemctl enable --now fasting-bot
-            sleep 3
+            sudo systemctl restart fasting-bot
+
+            # --- Wait and verify ---
+            sleep 5
+            sudo systemctl is-active --quiet fasting-bot || {
+              echo "ERROR: fasting-bot failed to start";
+              sudo systemctl status fasting-bot --no-pager;
+              exit 1;
+            }
+
+            # --- Verify WhatsApp connected with existing session (no QR reset) ---
+            echo "Checking WhatsApp session..."
+            if sudo journalctl -u fasting-bot -n 20 --no-pager | grep -q "Connected to WhatsApp"; then
+              echo "SUCCESS: Bot is running and WhatsApp is connected";
+            else
+              echo "WARNING: WhatsApp connection status unclear. Check logs below:";
+              sudo journalctl -u fasting-bot -n 30 --no-pager;
+            fi
+
             sudo systemctl status fasting-bot --no-pager
