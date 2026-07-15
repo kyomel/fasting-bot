@@ -93,11 +93,6 @@ func getPresetList() string {
 		"/water-36 — 36 jam\n" +
 		"   🔄 \"IGF-1 turun, sel masuk mode damage control (Valter Longo, USC)\"\n" +
 		"/water-48 — 48 jam\n" +
-		"   🧪 \"Sinyal regenerasi stem cell — sel imun lama dibersihkan, yang baru siap dibentuk saat refeed\"\n" +
-		"/water-56 — 56 jam\n" +
-		"   ⚠️ \"Naik bertahap dari 48 jam — deep cellular cleanup makin dalam\"\n" +
-		"/water-64 — 64 jam\n" +
-		"   ⚠️ \"Step sebelum 72 jam — refeed harus makin pelan\"\n" +
 		"/water-72 — 72 jam\n" +
 		"   🏔️ \"Batas atas bot — imun reset menyeluruh, mitokondria diperbarui\"\n\n" +
 		"⚠️ *Dry Fasting (berpengalaman)*\n" +

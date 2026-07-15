@@ -98,10 +98,19 @@ func TestListPuasaCommandIsRemoved(t *testing.T) {
 	}
 }
 
+func TestFaseAndRiwayatHelpText(t *testing.T) {
+	help := getHelpText()
+	for _, want := range []string{"/fase", "/riwayat"} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("help should mention %q", want)
+		}
+	}
+}
+
 func TestPanduanIncludesWaterFastingQuickCommands(t *testing.T) {
 	guide := domain.GetPanduan()
 
-	for _, want := range []string{"/water-24", "/water-36", "/water-48", "/water-56", "/water-64", "/water-72", "/if-1212", "/if-1410", "/if-168", "/if-186", "/if-204", "/omad", "Preset Cepat"} {
+	for _, want := range []string{"/water-24", "/water-36", "/water-48", "/water-72", "/if-1212", "/if-1410", "/if-168", "/if-186", "/if-204", "/omad", "Preset Cepat"} {
 		if !strings.Contains(guide, want) {
 			t.Fatalf("panduan should contain %q, got: %q", want, guide)
 		}

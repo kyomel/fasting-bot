@@ -39,7 +39,7 @@ ALUR PALING SEDERHANA
    /if-204      → 20:4, advanced
    /omad        → 22 jam, satu kali makan
    /water-24    → 24 jam water fasting
-   /water-36, /water-48, /water-56, /water-64, /water-72
+   /water-36, /water-48, /water-72
    /dry-24      → 24 jam dry fasting
 
    Semua preset bisa dikasih jam atau tanggal:
@@ -51,19 +51,24 @@ ALUR PALING SEDERHANA
    /puasa-dry 18 05:00       — mulai jam 5
    /puasa-dry 18 14-06-2026 05:00 — jadwalkan
 
-7. Cek status:
+7. Cek status (+ fase metabolik):
    /status
 
-8. Buka puasa (catat selesai):
-   /buka
+8. Lihat tahapan metabolik:
+   /fase
+
+9. Buka puasa (catat selesai):
+   /buka                         — catat buka sekarang
    Jika lupa tepat waktu:
-   /buka 23-05-2026 18:30
+   /buka 23-05-2026 18:30        — catat buka di waktu lampau
 
-9. Batalkan jadwal:
-   /batalkan
+10. Batalkan jadwal:
+    /batalkan
 
-10. Cek statistik & leaderboard:
+11. Cek statistik, riwayat & leaderboard:
     /stats
+    /riwayat
+    /riwayat 7
     /leaderboard
 
 
@@ -96,16 +101,10 @@ DAFTAR JENIS PUASA SAAT INI
 9. Water Fasting 48 jam
    Preset: /water-48  |   Manual: /puasa 48
 
-10. Water Fasting 56 jam
-    Preset: /water-56 |   Manual: /puasa 56
-
-11. Water Fasting 64 jam
-    Preset: /water-64 |   Manual: /puasa 64
-
-12. Water Fasting 72 jam
+10. Water Fasting 72 jam
     Preset: /water-72 |   Manual: /puasa 72
 
-13. Dry Fasting (tanpa air) — maksimal 48 jam dulu
+11. Dry Fasting (tanpa air) — maksimal 48 jam dulu
     Preset: /dry-24   |   Manual: /puasa-dry <durasi>
 
 Mau lebih dari 72 jam? Bot membatasi 168 jam (7 hari).
@@ -113,7 +112,7 @@ Format: /puasa 96 14-06-2026 06:00
 Hanya untuk yang sudah terbiasa — konsultasi dokter dulu.
 
 
-FORMAT COMMAND BARU — /puasa & /puasa-dry
+FORMAT COMMAND — /puasa & /puasa-dry
 -----------------------------------------
 Format paling simpel untuk mulai puasa:
 
@@ -131,14 +130,6 @@ Format yang sama berlaku untuk /puasa-dry:
    /puasa-dry 18 05:00
    /puasa-dry 18 14-06-2026 05:00
 
-Untuk /jadwal (alternatif scheduling):
-   /jadwal <durasi> <tanggal> <jam>
-   Contoh: /jadwal 16 20-06-2026 05:00
-
-COMMAND LAMA (deprecated, masih berfungsi)
---------------------------------------------
-/set-puasa <nomor> <jam_mulai> [durasi_jam]  →  pakai /puasa <durasi> <jam>
-/jadwalkan <nomor> <tanggal> <jam_mulai> [durasi_jam]  →  pakai /puasa <durasi> <tanggal> <jam>
 
 DAFTAR COMMAND
 --------------
@@ -146,15 +137,15 @@ DAFTAR COMMAND
 /setname <nama> — Ubah nama
 /puasa [durasi] [jam] [tanggal jam] — Mulai atau jadwalkan puasa (format utama)
 /puasa-dry [durasi] [jam] [tanggal jam] — Dry fasting (maks 48 jam, format sama dengan /puasa)
-/jadwal <durasi> <tanggal> <jam> — Jadwalkan alternatif (format sama dengan /puasa 3 arg)
-/jadwal-dry <durasi> <tanggal> <jam> — Jadwalkan dry fasting (maks 48 jam)
 /panduan — Panduan edukatif + daftar preset lengkap
 /pemula — Panduan IF bertahap dari 12 jam
-/status — Cek status puasa
+/status — Cek status + fase metabolik
+/fase — Tahapan metabolik (fed → deep fast)
 /motivasi — Suntikan semangat sesuai fase puasa
-/buka [tanggal jam] — Catat buka puasa
+/buka [tanggal jam] — Catat buka puasa (tanpa arg = buka sekarang)
 /batalkan — Batalkan jadwal aktif
 /stats — Statistik pribadi
+/riwayat [n] — Riwayat sesi terakhir (default 5)
 /badge — Koleksi badge
 /leaderboard — Klasemen puasa grup
 /bantuan — Bantuan command

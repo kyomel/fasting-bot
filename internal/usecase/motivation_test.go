@@ -175,6 +175,9 @@ func (r *motivationScheduleRepo) ResetStaleCurrentStreaks(currentDate, currentDa
 func (r *motivationScheduleRepo) FindFastingStatsByUserID(userID int64) (*domain.FastingStats, error) {
 	return nil, sql.ErrNoRows
 }
+func (r *motivationScheduleRepo) FindRecentFastingRecords(userID int64, limit int) ([]domain.FastingRecord, error) {
+	return nil, nil
+}
 func (r *motivationScheduleRepo) FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error) {
 	return nil, nil
 }

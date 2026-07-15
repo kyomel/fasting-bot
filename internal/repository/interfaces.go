@@ -19,6 +19,7 @@ type ScheduleRepository interface {
 	UpsertFastingStats(record *domain.FastingRecord) error
 	ResetStaleCurrentStreaks(currentDate, currentDateTime string) error
 	FindFastingStatsByUserID(userID int64) (*domain.FastingStats, error)
+	FindRecentFastingRecords(userID int64, limit int) ([]domain.FastingRecord, error)
 	FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error)
 	CleanupOldFastingRecords(cutoff string) (int64, error)
 	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)

@@ -313,6 +313,47 @@ func (r *ScheduleRepositorySQLite) FindFastingLeaderboard() ([]domain.FastingLea
 	return entries, nil
 }
 
+func (r *ScheduleRepositorySQLite) FindRecentFastingRecords(userID int64, limit int) ([]domain.FastingRecord, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	rows, err := r.db.Query(`
+		SELECT id, user_id, schedule_id, fasting_type_name, fast_start, planned_fast_end, opened_at, duration_minutes, completed_date, created_at
+		FROM fasting_records
+		WHERE user_id = ?
+		ORDER BY opened_at DESC, id DESC
+		LIMIT ?
+	`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []domain.FastingRecord
+	for rows.Next() {
+		var record domain.FastingRecord
+		if err := rows.Scan(
+			&record.ID,
+			&record.UserID,
+			&record.ScheduleID,
+			&record.FastingTypeName,
+			&record.FastStart,
+			&record.PlannedFastEnd,
+			&record.OpenedAt,
+			&record.DurationMinutes,
+			&record.CompletedDate,
+			&record.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
 func (r *ScheduleRepositorySQLite) CleanupOldFastingRecords(cutoff string) (int64, error) {
 	result, err := r.db.Exec(`
 		DELETE FROM fasting_records
