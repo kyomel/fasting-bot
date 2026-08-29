@@ -8,12 +8,15 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"database/sql"
 	"fasting-bot/internal/config"
 	"fasting-bot/internal/delivery/whatsapp"
 	"fasting-bot/internal/infrastructure/database"
 	"fasting-bot/internal/infrastructure/persistence"
 	waInfra "fasting-bot/internal/infrastructure/whatsapp"
 	"fasting-bot/internal/usecase"
+
+	"fasting-bot/internal/repository"
 )
 
 func main() {
@@ -32,10 +35,7 @@ func main() {
 	defer db.Close()
 	fmt.Println("✅ Database initialized")
 
-	userRepo := persistence.NewUserRepository(db.Conn)
-	scheduleRepo := persistence.NewScheduleRepository(db.Conn)
-	notificationRepo := persistence.NewNotificationRepository(db.Conn)
-	badgeRepo := persistence.NewBadgeRepository(db.Conn)
+	userRepo, scheduleRepo, notificationRepo, badgeRepo := newRepositories(db.Conn)
 
 	fastingUsecase := usecase.NewFastingUsecase(userRepo, scheduleRepo, notificationRepo, badgeRepo)
 
@@ -63,4 +63,20 @@ func main() {
 
 	fmt.Println("\n👋 Shutting down bot...")
 	waClient.Disconnect()
+}
+
+// newRepositories selects the PostgreSQL or SQLite repository set based on
+// the configured DB_CONNECTION. PostgreSQL is the target for new deployments;
+// SQLite remains the fallback when DB_CONNECTION is empty.
+func newRepositories(db *sql.DB) (repository.UserRepository, repository.ScheduleRepository, repository.NotificationRepository, repository.BadgeRepository) {
+	if config.DBConnection != "" {
+		return persistence.NewUserRepositoryPostgres(db),
+			persistence.NewScheduleRepositoryPostgres(db),
+			persistence.NewNotificationRepositoryPostgres(db),
+			persistence.NewBadgeRepositoryPostgres(db)
+	}
+	return persistence.NewUserRepository(db),
+		persistence.NewScheduleRepository(db),
+		persistence.NewNotificationRepository(db),
+		persistence.NewBadgeRepository(db)
 }

@@ -13,14 +13,14 @@ func TestBadgeRepositoryAwardsIdempotently(t *testing.T) {
 	db := newBadgeTestDB(t)
 	repo := NewBadgeRepository(db)
 
-	if err := repo.AwardBadges(1, []domain.BadgeKey{domain.BadgeFirstFast, domain.BadgeFirstFast, domain.BadgeNightOwl}); err != nil {
+	if err := repo.AwardBadges(domain.ID("1"), []domain.BadgeKey{domain.BadgeFirstFast, domain.BadgeFirstFast, domain.BadgeNightOwl}); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.AwardBadges(1, []domain.BadgeKey{domain.BadgeFirstFast}); err != nil {
+	if err := repo.AwardBadges(domain.ID("1"), []domain.BadgeKey{domain.BadgeFirstFast}); err != nil {
 		t.Fatal(err)
 	}
 
-	earned, err := repo.EarnedBadges(1)
+	earned, err := repo.EarnedBadges(domain.ID("1"))
 	if err != nil {
 		t.Fatal(err)
 	}

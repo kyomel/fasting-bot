@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"fasting-bot/internal/config"
+	"fasting-bot/internal/domain"
 	"fasting-bot/internal/repository"
 )
 
@@ -19,8 +20,8 @@ func NewNotificationRepository(db *sql.DB) repository.NotificationRepository {
 	return r
 }
 
-func (r *NotificationRepositorySQLite) LogNotification(userID int64, notificationType string) error {
+func (r *NotificationRepositorySQLite) LogNotification(userID domain.ID, notificationType string) error {
 	sentAt := time.Now().In(config.Location).Format("2006-01-02 15:04:05")
-	_, err := r.logNotifStmt.Exec(userID, notificationType, sentAt)
+	_, err := r.logNotifStmt.Exec(string(userID), notificationType, sentAt)
 	return err
 }

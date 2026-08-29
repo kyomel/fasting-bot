@@ -13,10 +13,11 @@ type DB struct {
 }
 
 func New() (*DB, error) {
-	databasePath, err := config.SecureFilePath(config.DatabasePath)
-	if err != nil {
-		return nil, fmt.Errorf("invalid database path: %w", err)
+	if config.DBConnection != "" {
+		return NewPostgres()
 	}
+
+	databasePath, err := config.SecureFilePath(config.DatabasePath)
 
 	conn, err := sql.Open("sqlite3", "file:"+databasePath+"?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on")
 	if err != nil {

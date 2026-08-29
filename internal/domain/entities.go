@@ -3,16 +3,19 @@ package domain
 import "time"
 
 type User struct {
-	ID        int64
-	Phone     string
-	Name      string
-	JID       string
-	CreatedAt time.Time
+	ID           ID
+	Username     string
+	PasswordHash string
+	Phone        string
+	Email        string
+	Name         string
+	JID          string
+	CreatedAt    time.Time
 }
 
 type FastingSchedule struct {
-	ID              int64
-	UserID          int64
+	ID              ID
+	UserID          ID
 	FastStart       string
 	FastEnd         string
 	FastingTypeName string
@@ -21,16 +24,16 @@ type FastingSchedule struct {
 }
 
 type NotificationLog struct {
-	ID               int64
-	UserID           int64
+	ID               ID
+	UserID           ID
 	NotificationType string
 	SentAt           time.Time
 }
 
 type FastingRecord struct {
-	ID              int64
-	UserID          int64
-	ScheduleID      int64
+	ID              ID
+	UserID          ID
+	ScheduleID      ID
 	FastingTypeName string
 	FastStart       string
 	PlannedFastEnd  string
@@ -42,7 +45,7 @@ type FastingRecord struct {
 }
 
 type FastingStats struct {
-	UserID              int64
+	UserID              ID
 	Name                string
 	TotalSessions       int
 	TotalMinutes        int
@@ -54,7 +57,7 @@ type FastingStats struct {
 }
 
 type FastingLeaderboardEntry struct {
-	UserID            int64
+	UserID            ID
 	Name              string
 	CurrentStreakDays int
 	TotalMinutes      int

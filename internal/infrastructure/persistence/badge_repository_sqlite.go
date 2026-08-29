@@ -16,8 +16,8 @@ func NewBadgeRepository(db *sql.DB) repository.BadgeRepository {
 	return &BadgeRepositorySQLite{db: db}
 }
 
-func (r *BadgeRepositorySQLite) EarnedBadges(userID int64) (map[domain.BadgeKey]struct{}, error) {
-	rows, err := r.db.Query(`SELECT badge_key FROM user_badges WHERE user_id = ?`, userID)
+func (r *BadgeRepositorySQLite) EarnedBadges(userID domain.ID) (map[domain.BadgeKey]struct{}, error) {
+	rows, err := r.db.Query(`SELECT badge_key FROM user_badges WHERE user_id = ?`, string(userID))
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (r *BadgeRepositorySQLite) EarnedBadges(userID int64) (map[domain.BadgeKey]
 	return earned, nil
 }
 
-func (r *BadgeRepositorySQLite) AwardBadges(userID int64, keys []domain.BadgeKey) error {
+func (r *BadgeRepositorySQLite) AwardBadges(userID domain.ID, keys []domain.BadgeKey) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -46,7 +46,7 @@ func (r *BadgeRepositorySQLite) AwardBadges(userID int64, keys []domain.BadgeKey
 	args := make([]any, 0, len(keys)*2)
 	for _, key := range keys {
 		placeholders = append(placeholders, "(?, ?)")
-		args = append(args, userID, string(key))
+		args = append(args, string(userID), string(key))
 	}
 
 	_, err := r.db.Exec(

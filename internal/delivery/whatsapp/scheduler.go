@@ -553,11 +553,17 @@ func containsHour(hours []int, target int) bool {
 	return false
 }
 
-func schedulerMessage(pool []string, userID int64) string {
+func schedulerMessage(pool []string, userID domain.ID) string {
 	if len(pool) == 0 {
 		return "💪 Kamu sedang membangun konsistensi. Lanjutkan pelan-pelan, satu jam demi satu jam."
 	}
-	index := int((userID + int64(time.Now().In(config.Location).YearDay())) % int64(len(pool)))
+	// Stable per-user rotation: hash the user id so message pools rotate
+	// deterministically across users, not by wall-clock only.
+	seed := int64(0)
+	for _, b := range []byte(userID) {
+		seed = seed*31 + int64(b)
+	}
+	index := int((seed + int64(time.Now().In(config.Location).YearDay())) % int64(len(pool)))
 	return pool[index]
 }
 
@@ -599,7 +605,7 @@ func preBreakBenefitNudge(fastingTypeName string, plannedHours int) string {
 	return "🔥 IF pendek tetap bermanfaat: jeda insulin, akses lemak, dan ritme makan lebih rapi. Buka pelan agar kurva gula darah tetap landai."
 }
 
-func proactiveSafetyNudge(fastingTypeName string, elapsedHours int, userID int64) string {
+func proactiveSafetyNudge(fastingTypeName string, elapsedHours int, userID domain.ID) string {
 	if isDryFastingName(fastingTypeName) {
 		return "⚠️ *Dry fasting:* jangan paksa tubuh. Kalau pusing berat, lemas ekstrem, bingung, atau terasa tidak aman, batalkan dengan bijak."
 	}

@@ -132,7 +132,7 @@ func TestFindUsersForElapsedNotificationDedupsWithinCurrentFast(t *testing.T) {
 	if len(targets) != 1 {
 		t.Fatalf("FindUsersForElapsedNotification() returned %d targets, want 1: %#v", len(targets), targets)
 	}
-	if targets[0].UserID != 1 || targets[0].FastingTypeName != "IF 18:6" || targets[0].CurrentStreakDays != 2 {
+	if targets[0].UserID != domain.ID("1") || targets[0].FastingTypeName != "IF 18:6" || targets[0].CurrentStreakDays != 2 {
 		t.Fatalf("unexpected target: %#v", targets[0])
 	}
 }
@@ -163,7 +163,7 @@ func TestFindUsersBeforeTargetNotificationDedupsWithinCurrentFast(t *testing.T) 
 	if len(targets) != 1 {
 		t.Fatalf("FindUsersBeforeTargetNotification() returned %d targets, want 1: %#v", len(targets), targets)
 	}
-	if targets[0].UserID != 1 {
+	if targets[0].UserID != domain.ID("1") {
 		t.Fatalf("unexpected target: %#v", targets[0])
 	}
 }
@@ -187,7 +187,7 @@ func TestFindUsersBeforeTargetNotificationRespectsLeadHours(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(targets) != 1 || targets[0].UserID != 1 {
+	if len(targets) != 1 || targets[0].UserID != domain.ID("1") {
 		t.Fatalf("FindUsersBeforeTargetNotification() = %#v, want only 24h water fast", targets)
 	}
 }
@@ -214,7 +214,7 @@ func TestFindFastingLeaderboardUsesDeterministicTieBreaker(t *testing.T) {
 	if len(entries) != 2 {
 		t.Fatalf("FindFastingLeaderboard() returned %d entries, want 2", len(entries))
 	}
-	if entries[0].UserID != 1 || entries[1].UserID != 2 {
+	if entries[0].UserID != domain.ID("1") || entries[1].UserID != domain.ID("2") {
 		t.Fatalf("FindFastingLeaderboard() = %#v, want tie broken by user id ASC", entries)
 	}
 }

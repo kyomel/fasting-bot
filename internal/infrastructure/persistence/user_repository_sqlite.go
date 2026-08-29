@@ -2,12 +2,14 @@ package persistence
 
 import (
 	"database/sql"
+	"strconv"
+
 	"fasting-bot/internal/domain"
 	"fasting-bot/internal/repository"
 )
 
 type UserRepositorySQLite struct {
-	db            *sql.DB
+	db              *sql.DB
 	findByPhoneStmt *sql.Stmt
 	findByIDStmt    *sql.Stmt
 	createStmt      *sql.Stmt
@@ -30,13 +32,16 @@ func (r *UserRepositorySQLite) Create(user *domain.User) error {
 	if err != nil {
 		return err
 	}
-	id, _ := result.LastInsertId()
-	user.ID = id
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	user.ID = domain.ID(strconv.FormatInt(id, 10))
 	return nil
 }
 
-func (r *UserRepositorySQLite) UpdateName(userID int64, name string) error {
-	_, err := r.updateNameStmt.Exec(name, userID)
+func (r *UserRepositorySQLite) UpdateName(userID domain.ID, name string) error {
+	_, err := r.updateNameStmt.Exec(name, string(userID))
 	return err
 }
 
@@ -49,9 +54,9 @@ func (r *UserRepositorySQLite) FindByPhone(phone string) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepositorySQLite) FindByID(id int64) (*domain.User, error) {
+func (r *UserRepositorySQLite) FindByID(id domain.ID) (*domain.User, error) {
 	var user domain.User
-	err := r.findByIDStmt.QueryRow(id).Scan(&user.ID, &user.Phone, &user.Name, &user.JID, &user.CreatedAt)
+	err := r.findByIDStmt.QueryRow(string(id)).Scan(&user.ID, &user.Phone, &user.Name, &user.JID, &user.CreatedAt)
 	if err != nil {
 		return nil, err
 	}

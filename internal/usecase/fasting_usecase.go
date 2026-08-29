@@ -81,12 +81,12 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 		return "", fmt.Errorf(errCheckDataFormat, err)
 	}
 
-	if existingUser != nil && existingUser.ID > 0 {
+	if existingUser != nil && existingUser.ID != "" {
 		registeredName := existingUser.Name
 		if registeredName == "" {
 			registeredName = existingUser.Phone
 		}
-		return fmt.Sprintf("✅ Akun sudah terdaftar!\nID: %d\nNama: %s\nNomor: %s\n\nGunakan /setname <nama> untuk mengubah nama.", existingUser.ID, registeredName, existingUser.Phone), nil
+		return fmt.Sprintf("✅ Akun sudah terdaftar!\nID: %s\nNama: %s\nNomor: %s\n\nGunakan /setname <nama> untuk mengubah nama.", existingUser.ID, registeredName, existingUser.Phone), nil
 	}
 
 	user := &domain.User{
@@ -99,7 +99,7 @@ func (u *fastingUsecase) RegisterUser(phone, jid, name string) (string, error) {
 	}
 
 	return fmt.Sprintf("🎉 *Selamat datang, %s!*\n"+
-		"ID: %d\nNomor: %s\n\n"+
+		"ID: %s\nNomor: %s\n\n"+
 		"Bot ini bakal nemenin kamu tracking puasa — IF, OMAD, Water/Dry/Prolonged Fasting — plus ngirim notifikasi otomatis pas mulai & waktunya buka.\n\n"+
 		"🚀 *Mulai dalam 30 detik:*\n"+
 		"1️⃣ /panduan — baca ringkas jenis puasa & cara pakai bot\n"+
@@ -184,7 +184,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 
 	schedule, err := u.scheduleRepo.FindActiveByUserID(user.ID)
 	if err != nil {
-		return fmt.Sprintf("📋 *Status Akun*\nID: %d\nNama: %s\nNomor: %s\n\nBelum ada jadwal puasa aktif.\n\n"+
+		return fmt.Sprintf("📋 *Status Akun*\nID: %s\nNama: %s\nNomor: %s\n\nBelum ada jadwal puasa aktif.\n\n"+
 			"Atur sekarang:\n"+
 			"• */panduan* — baca panduan ringkas\n"+
 			"• */puasa 16* — mulai 16 jam dari sekarang\n"+
@@ -227,7 +227,7 @@ func (u *fastingUsecase) GetStatus(phone string) (string, error) {
 		status = fmt.Sprintf("✅ Target selesai!\nFase terakhir: %s *%s*\nJalankan */buka* untuk catat hasil.", phase.Emoji, phase.Name)
 	}
 
-	return fmt.Sprintf("📋 *Status Fasting*\nID: %d\nNama: %s\nNomor: %s\nJenis Puasa: %s\nMulai: %s\nSelesai: %s\n\n%s", user.ID, name, user.Phone, fastingTypeName, formatScheduleDisplay(schedule.FastStart), formatScheduleDisplay(schedule.FastEnd), status), nil
+	return fmt.Sprintf("📋 *Status Fasting*\nID: %s\nNama: %s\nNomor: %s\nJenis Puasa: %s\nMulai: %s\nSelesai: %s\n\n%s", user.ID, name, user.Phone, fastingTypeName, formatScheduleDisplay(schedule.FastStart), formatScheduleDisplay(schedule.FastEnd), status), nil
 }
 
 func (u *fastingUsecase) CancelToday(phone string) (string, error) {
@@ -291,7 +291,7 @@ func (u *fastingUsecase) lookupUser(phone string) (*domain.User, error) {
 	return user, nil
 }
 
-func (u *fastingUsecase) lookupActiveSchedule(userID int64) (*domain.FastingSchedule, error) {
+func (u *fastingUsecase) lookupActiveSchedule(userID domain.ID) (*domain.FastingSchedule, error) {
 	schedule, err := u.scheduleRepo.FindActiveByUserID(userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -302,7 +302,7 @@ func (u *fastingUsecase) lookupActiveSchedule(userID int64) (*domain.FastingSche
 	return schedule, nil
 }
 
-func (u *fastingUsecase) cancelBeforeStart(userID int64, startTime time.Time) (string, error) {
+func (u *fastingUsecase) cancelBeforeStart(userID domain.ID, startTime time.Time) (string, error) {
 	if err := u.scheduleRepo.DeactivateByUserID(userID); err != nil {
 		return "", fmt.Errorf("gagal membatalkan jadwal: %w", err)
 	}
@@ -344,7 +344,7 @@ func (u *fastingUsecase) breakFasting(user *domain.User, schedule *domain.Fastin
 	}
 	newBadges, err := u.evaluateAndAwardBadges(user.ID, record)
 	if err != nil {
-		log.Printf("[WARN] evaluateAndAwardBadges failed for user %d: %v", user.ID, err)
+		log.Printf("[WARN] evaluateAndAwardBadges failed for user %s: %v", user.ID, err)
 	}
 	badgeUnlockMessage := formatBadgeUnlock(newBadges)
 
@@ -612,7 +612,7 @@ func (u *fastingUsecase) GetStats(phone string) (string, error) {
 	}
 
 	if _, err := u.evaluateAndAwardBadges(user.ID, nil); err != nil {
-		log.Printf("[WARN] lazy badge backfill failed for user %d: %v", user.ID, err)
+		log.Printf("[WARN] lazy badge backfill failed for user %s: %v", user.ID, err)
 	}
 
 	message := fmt.Sprintf("📊 *Stats Puasa %s*\nTotal sesi: %d\nStreak puasa saat ini: %d hari\nStreak puasa terpanjang: %d hari\nTotal waktu puasa: %s\n\nTerakhir buka: %s\nDurasi terakhir: %s", stats.Name, stats.TotalSessions, stats.CurrentStreakDays, stats.LongestStreakDays, formatDurationWithDays(stats.TotalMinutes), formatScheduleDisplay(stats.LastOpenedAt), formatDurationWithDays(stats.LastDurationMinutes))
@@ -641,7 +641,7 @@ func (u *fastingUsecase) GetBadges(phone string) (string, error) {
 	}
 	if stats != nil {
 		if _, err := u.evaluateAndAwardBadges(user.ID, nil); err != nil {
-			log.Printf("[WARN] lazy badge backfill failed for user %d: %v", user.ID, err)
+			log.Printf("[WARN] lazy badge backfill failed for user %s: %v", user.ID, err)
 		}
 	}
 
@@ -665,7 +665,7 @@ func (u *fastingUsecase) GetLeaderboard() (string, error) {
 		return "🏆 *Leaderboard Puasa*\nBelum ada data puasa.\n\nLeaderboard akan terisi setelah user menjalankan /buka setelah puasa dimulai.", nil
 	}
 	if err := u.awardBadges(entries[0].UserID, []domain.BadgeKey{domain.BadgeGroupChampion}); err != nil {
-		log.Printf("[WARN] award group champion badge failed for user %d: %v", entries[0].UserID, err)
+		log.Printf("[WARN] award group champion badge failed for user %s: %v", entries[0].UserID, err)
 	}
 
 	limit := len(entries)
@@ -760,9 +760,9 @@ func (u *fastingUsecase) GetMotivation(phone string) (string, error) {
 
 	return composeFastingMotivation(name, schedule, phase, elapsed, remaining, body), nil
 }
+
 // SetFastingType and ScheduleFastingType removed — deprecated old flow.
 // All scheduling now goes through SetFastingByDuration / ScheduleFastingByDuration.
-
 
 func (u *fastingUsecase) SetFastingByDuration(phone string, durationHours int, isDry bool, startTime string) (string, error) {
 	if durationHours < 1 || durationHours > 168 {
@@ -880,8 +880,7 @@ func scheduleTeaserForDuration(durationHours int, fastingTypeName string) string
 	}
 }
 
-
-func (u *fastingUsecase) markElapsedNotifications(userID int64, startDateTime, endDateTime time.Time) {
+func (u *fastingUsecase) markElapsedNotifications(userID domain.ID, startDateTime, endDateTime time.Time) {
 	now := time.Now().In(config.Location).Truncate(time.Minute)
 	if !startDateTime.After(now) {
 		_ = u.notificationRepo.LogNotification(userID, "start")
@@ -919,7 +918,7 @@ func (u *fastingUsecase) refreshStaleCurrentStreaks() error {
 	return u.scheduleRepo.ResetStaleCurrentStreaks(now.Format("2006-01-02"), formatStoredTime(now))
 }
 
-func (u *fastingUsecase) evaluateAndAwardBadges(userID int64, record *domain.FastingRecord) ([]domain.Badge, error) {
+func (u *fastingUsecase) evaluateAndAwardBadges(userID domain.ID, record *domain.FastingRecord) ([]domain.Badge, error) {
 	if u.badgeRepo == nil {
 		return nil, nil
 	}
@@ -950,21 +949,21 @@ func (u *fastingUsecase) evaluateAndAwardBadges(userID int64, record *domain.Fas
 	return badges, nil
 }
 
-func (u *fastingUsecase) awardBadges(userID int64, keys []domain.BadgeKey) error {
+func (u *fastingUsecase) awardBadges(userID domain.ID, keys []domain.BadgeKey) error {
 	if u.badgeRepo == nil || len(keys) == 0 {
 		return nil
 	}
 	return u.badgeRepo.AwardBadges(userID, keys)
 }
 
-func (u *fastingUsecase) earnedBadges(userID int64) (map[domain.BadgeKey]struct{}, error) {
+func (u *fastingUsecase) earnedBadges(userID domain.ID) (map[domain.BadgeKey]struct{}, error) {
 	if u.badgeRepo == nil {
 		return map[domain.BadgeKey]struct{}{}, nil
 	}
 	return u.badgeRepo.EarnedBadges(userID)
 }
 
-func (u *fastingUsecase) badgeShelf(userID int64) string {
+func (u *fastingUsecase) badgeShelf(userID domain.ID) string {
 	earned, err := u.earnedBadges(userID)
 	if err != nil || len(earned) == 0 {
 		return ""

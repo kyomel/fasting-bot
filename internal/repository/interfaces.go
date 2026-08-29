@@ -6,20 +6,20 @@ import (
 
 type UserRepository interface {
 	Create(user *domain.User) error
-	UpdateName(userID int64, name string) error
+	UpdateName(userID domain.ID, name string) error
 	FindByPhone(phone string) (*domain.User, error)
-	FindByID(id int64) (*domain.User, error)
+	FindByID(id domain.ID) (*domain.User, error)
 }
 
 type ScheduleRepository interface {
 	Create(schedule *domain.FastingSchedule) error
-	DeactivateByUserID(userID int64) error
-	FindActiveByUserID(userID int64) (*domain.FastingSchedule, error)
+	DeactivateByUserID(userID domain.ID) error
+	FindActiveByUserID(userID domain.ID) (*domain.FastingSchedule, error)
 	CreateFastingRecord(record *domain.FastingRecord) error
 	UpsertFastingStats(record *domain.FastingRecord) error
 	ResetStaleCurrentStreaks(currentDate, currentDateTime string) error
-	FindFastingStatsByUserID(userID int64) (*domain.FastingStats, error)
-	FindRecentFastingRecords(userID int64, limit int) ([]domain.FastingRecord, error)
+	FindFastingStatsByUserID(userID domain.ID) (*domain.FastingStats, error)
+	FindRecentFastingRecords(userID domain.ID, limit int) ([]domain.FastingRecord, error)
 	FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error)
 	CleanupOldFastingRecords(cutoff string) (int64, error)
 	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
@@ -28,20 +28,20 @@ type ScheduleRepository interface {
 	FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]NotificationTarget, error)
 	FindUsersWithActiveFasting(currentDateTime string) ([]NotificationTarget, error)
 	FindUsersWithExpiredStreaks(currentDateTime string) ([]ExpiredStreakTarget, error)
-	ResetStreakByUserID(userID int64) error
+	ResetStreakByUserID(userID domain.ID) error
 }
 
 type NotificationRepository interface {
-	LogNotification(userID int64, notificationType string) error
+	LogNotification(userID domain.ID, notificationType string) error
 }
 
 type BadgeRepository interface {
-	EarnedBadges(userID int64) (map[domain.BadgeKey]struct{}, error)
-	AwardBadges(userID int64, keys []domain.BadgeKey) error
+	EarnedBadges(userID domain.ID) (map[domain.BadgeKey]struct{}, error)
+	AwardBadges(userID domain.ID, keys []domain.BadgeKey) error
 }
 
 type NotificationTarget struct {
-	UserID            int64
+	UserID            domain.ID
 	JID               string
 	Phone             string
 	Name              string
@@ -52,7 +52,7 @@ type NotificationTarget struct {
 }
 
 type ExpiredStreakTarget struct {
-	UserID            int64
+	UserID            domain.ID
 	JID               string
 	Name              string
 	CurrentStreakDays int

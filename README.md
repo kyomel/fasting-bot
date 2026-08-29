@@ -14,24 +14,27 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 
 ```text
 fasting-bot/
-├── cmd/fasting-bot/              # Entry point (dependency injection)
-│   └── main.go
 ├── internal/
 │   ├── config/                   # Konfigurasi aplikasi
 │   │   └── config.go
 │   ├── domain/                   # Entities / business objects
-│   │   └── entities.go           # User, FastingSchedule, NotificationLog
+│   │   ├── entities.go           # User, FastingSchedule, NotificationLog
+│   │   └── ids.go                # domain.ID (UUID)
 │   ├── repository/               # Data access interfaces (contracts)
 │   │   └── interfaces.go         # UserRepository, ScheduleRepository, NotificationRepository
 │   ├── usecase/                  # Business logic
 │   │   └── fasting_usecase.go    # FastingUsecase interface + implementation
 │   ├── infrastructure/           # External implementations
 │   │   ├── database/
-│   │   │   └── sqlite.go         # SQLite connection + migrations
-│   │   ├── persistence/          # Repository implementations
-│   │   │   ├── user_repository_sqlite.go
-│   │   │   ├── schedule_repository_sqlite.go
-│   │   │   └── notification_repository_sqlite.go
+│   │   │   ├── sqlite.go         # SQLite connection + migrations (mode lama)
+│   │   │   └── postgres.go       # PostgreSQL connection + goose migrations
+│   │   ├── persistence/          # Repository implementations (SQLite + PostgreSQL)
+│   │   │   ├── user_repository_sqlite.go / _postgres.go
+│   │   │   ├── schedule_repository_sqlite.go / _postgres.go
+│   │   │   ├── notification_repository_sqlite.go / _postgres.go
+│   │   │   ├── badge_repository_sqlite.go / _postgres.go
+│   │   │   ├── queries.go        # helper SQL dialect (placeholder, interval, dll)
+│   │   │   └── schedule_shared.go # logika streak/date dipakai kedua driver
 │   │   └── whatsapp/
 │   │       ├── client.go         # WhatsApp client wrapper
 │   │       └── notifier.go       # WhatsApp message sender
@@ -39,6 +42,8 @@ fasting-bot/
 │       └── whatsapp/
 │           ├── command_handler.go  # Command parser + handler
 │           └── scheduler.go        # Cron job notifikasi
+├── migrations/
+│   └── postgres/                 # goose SQL migrations (00001..00008)
 ├── go.mod
 └── README.md
 ```

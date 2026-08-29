@@ -3,6 +3,7 @@ package persistence
 import (
 	"database/sql"
 	"errors"
+	"strconv"
 	"time"
 
 	"fasting-bot/internal/domain"
@@ -38,19 +39,22 @@ func (r *ScheduleRepositorySQLite) Create(schedule *domain.FastingSchedule) erro
 	if err != nil {
 		return err
 	}
-	id, _ := result.LastInsertId()
-	schedule.ID = id
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	schedule.ID = domain.ID(strconv.FormatInt(id, 10))
 	return nil
 }
 
-func (r *ScheduleRepositorySQLite) DeactivateByUserID(userID int64) error {
-	_, err := r.deactivateByUserIDStmt.Exec(userID)
+func (r *ScheduleRepositorySQLite) DeactivateByUserID(userID domain.ID) error {
+	_, err := r.deactivateByUserIDStmt.Exec(string(userID))
 	return err
 }
 
-func (r *ScheduleRepositorySQLite) FindActiveByUserID(userID int64) (*domain.FastingSchedule, error) {
+func (r *ScheduleRepositorySQLite) FindActiveByUserID(userID domain.ID) (*domain.FastingSchedule, error) {
 	var schedule domain.FastingSchedule
-	err := r.findActiveByUserIDStmt.QueryRow(userID).Scan(&schedule.ID, &schedule.UserID, &schedule.FastStart, &schedule.FastEnd, &schedule.FastingTypeName, &schedule.IsActive, &schedule.CreatedAt)
+	err := r.findActiveByUserIDStmt.QueryRow(string(userID)).Scan(&schedule.ID, &schedule.UserID, &schedule.FastStart, &schedule.FastEnd, &schedule.FastingTypeName, &schedule.IsActive, &schedule.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +66,11 @@ func (r *ScheduleRepositorySQLite) CreateFastingRecord(record *domain.FastingRec
 	if err != nil {
 		return err
 	}
-	id, _ := result.LastInsertId()
-	record.ID = id
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	record.ID = domain.ID(strconv.FormatInt(id, 10))
 	return nil
 }
 
@@ -95,13 +102,13 @@ func (r *ScheduleRepositorySQLite) UpsertFastingStats(record *domain.FastingReco
 	return r.updateExistingStats(tx, record, openedAt, completedDate, stats)
 }
 
-func (r *ScheduleRepositorySQLite) getExistingStats(tx *sql.Tx, userID int64) (*userFastingStatsRow, error) {
+func (r *ScheduleRepositorySQLite) getExistingStats(tx *sql.Tx, userID domain.ID) (*userFastingStatsRow, error) {
 	var stats userFastingStatsRow
 	err := tx.QueryRow(`
 		SELECT current_streak_days, longest_streak_days, last_completed_date, last_streak_opened_at, last_opened_at
 		FROM user_fasting_stats
 		WHERE user_id = ?
-	`, userID).Scan(&stats.currentStreakDays, &stats.longestStreakDays, &stats.lastCompletedDate, &stats.lastStreakOpenedAt, &stats.lastOpenedAt)
+	`, string(userID)).Scan(&stats.currentStreakDays, &stats.longestStreakDays, &stats.lastCompletedDate, &stats.lastStreakOpenedAt, &stats.lastOpenedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -134,7 +141,7 @@ func (r *ScheduleRepositorySQLite) insertNewStats(tx *sql.Tx, record *domain.Fas
 			last_duration_minutes,
 			updated_at
 		) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-	`, record.UserID, record.DurationMinutes, currentStreakDays, longestStreakDays, lastCompletedDate, lastStreakOpenedAt, record.OpenedAt, record.DurationMinutes)
+	`, string(record.UserID), record.DurationMinutes, currentStreakDays, longestStreakDays, lastCompletedDate, lastStreakOpenedAt, record.OpenedAt, record.DurationMinutes)
 	if err != nil {
 		return err
 	}
@@ -167,7 +174,7 @@ func (r *ScheduleRepositorySQLite) updateExistingStats(tx *sql.Tx, record *domai
 			last_duration_minutes = ?,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE user_id = ?
-	`, record.DurationMinutes, nextCurrentStreakDays, stats.longestStreakDays, stats.lastCompletedDate, stats.lastStreakOpenedAt, record.OpenedAt, record.DurationMinutes, record.UserID)
+	`, record.DurationMinutes, nextCurrentStreakDays, stats.longestStreakDays, stats.lastCompletedDate, stats.lastStreakOpenedAt, record.OpenedAt, record.DurationMinutes, string(record.UserID))
 	if err != nil {
 		return err
 	}
@@ -205,75 +212,14 @@ func (r *ScheduleRepositorySQLite) ResetStaleCurrentStreaks(currentDate, current
 	return err
 }
 
-func fastingDateRange(record *domain.FastingRecord) (time.Time, time.Time, int, error) {
-	completedDate, err := time.Parse(storeDateLayout, record.CompletedDate)
-	if err != nil {
-		return time.Time{}, time.Time{}, 0, err
-	}
-
-	fastStart, err := time.Parse(storeDateTimeLayout, record.FastStart)
-	if err != nil {
-		fastStart = completedDate
-	}
-	fastStartDate := truncateDate(fastStart)
-	if completedDate.Before(fastStartDate) {
-		completedDate = fastStartDate
-	}
-
-	fastingDays := int(completedDate.Sub(fastStartDate).Hours()/24) + 1
-	return fastStartDate, completedDate, fastingDays, nil
-}
-
-func nextCurrentStreakDays(currentStreakDays int, lastStreakOpenedAt string, openedAt time.Time, streakQualified bool) int {
-	if !streakQualified {
-		if isStreakExpired(lastStreakOpenedAt, openedAt) {
-			return 0
-		}
-		return currentStreakDays
-	}
-
-	lastOpened, err := time.Parse(storeDateTimeLayout, lastStreakOpenedAt)
-	if err != nil {
-		return 1
-	}
-	if openedAt.Before(lastOpened) {
-		return currentStreakDays
-	}
-	if openedAt.Sub(lastOpened) > 24*time.Hour {
-		return 1
-	}
-
-	return currentStreakDays + 1
-}
-
-func isStreakExpired(lastStreakOpenedAt string, now time.Time) bool {
-	lastOpened, err := time.Parse(storeDateTimeLayout, lastStreakOpenedAt)
-	if err != nil {
-		return false
-	}
-	return now.Sub(lastOpened) > 24*time.Hour
-}
-
-func parseStoredDateTimeOrZero(value string) time.Time {
-	t, err := time.Parse(storeDateTimeLayout, value)
-	if err != nil {
-		return time.Time{}
-	}
-	return t
-}
-
-func truncateDate(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-func (r *ScheduleRepositorySQLite) FindFastingStatsByUserID(userID int64) (*domain.FastingStats, error) {
+func (r *ScheduleRepositorySQLite) FindFastingStatsByUserID(userID domain.ID) (*domain.FastingStats, error) {
 	var stats domain.FastingStats
 	err := r.db.QueryRow(`
 		SELECT s.user_id, COALESCE(NULLIF(u.name, ''), u.phone), s.total_sessions, s.total_minutes, s.current_streak_days, s.longest_streak_days, s.last_completed_date, s.last_opened_at, s.last_duration_minutes
 		FROM user_fasting_stats s
 		JOIN users u ON u.id = s.user_id
 		WHERE s.user_id = ?
-	`, userID).Scan(&stats.UserID, &stats.Name, &stats.TotalSessions, &stats.TotalMinutes, &stats.CurrentStreakDays, &stats.LongestStreakDays, &stats.LastCompletedDate, &stats.LastOpenedAt, &stats.LastDurationMinutes)
+	`, string(userID)).Scan(&stats.UserID, &stats.Name, &stats.TotalSessions, &stats.TotalMinutes, &stats.CurrentStreakDays, &stats.LongestStreakDays, &stats.LastCompletedDate, &stats.LastOpenedAt, &stats.LastDurationMinutes)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +259,7 @@ func (r *ScheduleRepositorySQLite) FindFastingLeaderboard() ([]domain.FastingLea
 	return entries, nil
 }
 
-func (r *ScheduleRepositorySQLite) FindRecentFastingRecords(userID int64, limit int) ([]domain.FastingRecord, error) {
+func (r *ScheduleRepositorySQLite) FindRecentFastingRecords(userID domain.ID, limit int) ([]domain.FastingRecord, error) {
 	if limit <= 0 {
 		limit = 5
 	}
@@ -323,7 +269,7 @@ func (r *ScheduleRepositorySQLite) FindRecentFastingRecords(userID int64, limit 
 		WHERE user_id = ?
 		ORDER BY opened_at DESC, id DESC
 		LIMIT ?
-	`, userID, limit)
+	`, string(userID), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -589,11 +535,11 @@ func (r *ScheduleRepositorySQLite) FindUsersWithExpiredStreaks(currentDateTime s
 	return targets, nil
 }
 
-func (r *ScheduleRepositorySQLite) ResetStreakByUserID(userID int64) error {
+func (r *ScheduleRepositorySQLite) ResetStreakByUserID(userID domain.ID) error {
 	_, err := r.db.Exec(`
 		UPDATE user_fasting_stats
 		SET current_streak_days = 0, updated_at = CURRENT_TIMESTAMP
 		WHERE user_id = ?
-	`, userID)
+	`, string(userID))
 	return err
 }
