@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"fasting-bot/internal/config"
+	"fasting-bot/internal/usecase"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -12,11 +13,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var _ usecase.Notifier = (*Notifier)(nil)
+
 type Notifier struct {
 	client *whatsmeow.Client
 }
 
-func NewNotifier(client *whatsmeow.Client) *Notifier {
+func NewNotifier(client *whatsmeow.Client) usecase.Notifier {
 	return &Notifier{client: client}
 }
 

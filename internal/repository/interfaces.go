@@ -22,12 +22,12 @@ type ScheduleRepository interface {
 	FindRecentFastingRecords(userID domain.ID, limit int) ([]domain.FastingRecord, error)
 	FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error)
 	CleanupOldFastingRecords(cutoff string) (int64, error)
-	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
-	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]NotificationTarget, error)
-	FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]NotificationTarget, error)
-	FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]NotificationTarget, error)
-	FindUsersWithActiveFasting(currentDateTime string) ([]NotificationTarget, error)
-	FindUsersWithExpiredStreaks(currentDateTime string) ([]ExpiredStreakTarget, error)
+	FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error)
+	FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error)
+	FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]domain.NotificationTarget, error)
+	FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]domain.NotificationTarget, error)
+	FindUsersWithActiveFasting(currentDateTime string) ([]domain.NotificationTarget, error)
+	FindUsersWithExpiredStreaks(currentDateTime string) ([]domain.ExpiredStreakTarget, error)
 	ResetStreakByUserID(userID domain.ID) error
 }
 
@@ -38,22 +38,4 @@ type NotificationRepository interface {
 type BadgeRepository interface {
 	EarnedBadges(userID domain.ID) (map[domain.BadgeKey]struct{}, error)
 	AwardBadges(userID domain.ID, keys []domain.BadgeKey) error
-}
-
-type NotificationTarget struct {
-	UserID            domain.ID
-	JID               string
-	Phone             string
-	Name              string
-	FastStart         string
-	FastEnd           string
-	FastingTypeName   string
-	CurrentStreakDays int
-}
-
-type ExpiredStreakTarget struct {
-	UserID            domain.ID
-	JID               string
-	Name              string
-	CurrentStreakDays int
 }

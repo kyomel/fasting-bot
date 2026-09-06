@@ -6,7 +6,6 @@ import (
 
 	"fasting-bot/internal/config"
 	"fasting-bot/internal/domain"
-	"fasting-bot/internal/repository"
 )
 
 func TestNormalizePhone(t *testing.T) {
@@ -118,7 +117,7 @@ func TestPanduanIncludesWaterFastingQuickCommands(t *testing.T) {
 }
 
 func TestProactiveDryFastingMessageHasSafetyWarningWithoutHydration(t *testing.T) {
-	msg := buildPhaseMilestoneMessage(repository.NotificationTarget{
+	msg := buildPhaseMilestoneMessage(domain.NotificationTarget{
 		UserID:          domain.ID("1"),
 		Name:            "Kyo",
 		FastStart:       "2026-06-01 00:00",
@@ -137,7 +136,7 @@ func TestProactiveDryFastingMessageHasSafetyWarningWithoutHydration(t *testing.T
 }
 
 func TestLongWaterHydrationReminderIncludesElectrolytes(t *testing.T) {
-	msg := buildHydrationReminderMessage(repository.NotificationTarget{
+	msg := buildHydrationReminderMessage(domain.NotificationTarget{
 		UserID:          domain.ID("1"),
 		Name:            "Kyo",
 		FastStart:       "2026-06-01 00:00",

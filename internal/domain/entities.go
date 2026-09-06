@@ -63,3 +63,24 @@ type FastingLeaderboardEntry struct {
 	TotalMinutes      int
 	TotalSessions     int
 }
+
+// NotificationTarget is a read-model returned by schedule queries to identify
+// users that should receive a proactive notification.
+type NotificationTarget struct {
+	UserID            ID
+	JID               string
+	Phone             string
+	Name              string
+	FastStart         string
+	FastEnd           string
+	FastingTypeName   string
+	CurrentStreakDays int
+}
+
+// ExpiredStreakTarget is a read-model for users whose streak has expired.
+type ExpiredStreakTarget struct {
+	UserID            ID
+	JID               string
+	Name              string
+	CurrentStreakDays int
+}

@@ -8,8 +8,8 @@ import (
 
 	"fasting-bot/internal/config"
 	"fasting-bot/internal/domain"
-	"fasting-bot/internal/infrastructure/whatsapp"
 	"fasting-bot/internal/repository"
+	"fasting-bot/internal/usecase"
 
 	"github.com/robfig/cron/v3"
 )
@@ -18,14 +18,14 @@ type Scheduler struct {
 	cron         *cron.Cron
 	scheduleRepo repository.ScheduleRepository
 	notifRepo    repository.NotificationRepository
-	notifier     *whatsapp.Notifier
+	notifier     usecase.Notifier
 	log          *slog.Logger
 }
 
 func NewScheduler(
 	scheduleRepo repository.ScheduleRepository,
 	notifRepo repository.NotificationRepository,
-	notifier *whatsapp.Notifier,
+	notifier usecase.Notifier,
 ) *Scheduler {
 	return &Scheduler{
 		scheduleRepo: scheduleRepo,
@@ -221,7 +221,7 @@ func (s *Scheduler) notifyDrySafetyReminders(currentDateTime string) {
 	}
 }
 
-func (s *Scheduler) sendAndLog(target repository.NotificationTarget, notificationType, msg string) {
+func (s *Scheduler) sendAndLog(target domain.NotificationTarget, notificationType, msg string) {
 	if err := s.notifier.Send(target.JID, msg); err != nil {
 		s.log.Warn("failed to send notification", "type", notificationType, "user", target.Name, "error", err)
 		return
@@ -233,7 +233,7 @@ func (s *Scheduler) sendAndLog(target repository.NotificationTarget, notificatio
 	s.log.Info("📨 sent notification", "type", notificationType, "user", target.Name)
 }
 
-func buildPhaseMilestoneMessage(t repository.NotificationTarget, trigger domain.ProactivePhaseNotification, currentDateTime string) string {
+func buildPhaseMilestoneMessage(t domain.NotificationTarget, trigger domain.ProactivePhaseNotification, currentDateTime string) string {
 	phase := domain.PhaseForElapsedHours(float64(trigger.TriggerAfterHours))
 	body := schedulerMessage(domain.MotivationForPhase(trigger.PhaseKey), t.UserID)
 	if nudge := proactiveSafetyNudge(t.FastingTypeName, trigger.TriggerAfterHours, t.UserID); nudge != "" {
@@ -254,7 +254,7 @@ func buildPhaseMilestoneMessage(t repository.NotificationTarget, trigger domain.
 	)
 }
 
-func buildNearTargetMotivationMessage(t repository.NotificationTarget, currentDateTime string) string {
+func buildNearTargetMotivationMessage(t domain.NotificationTarget, currentDateTime string) string {
 	elapsed := calculateDuration(t.FastStart, currentDateTime)
 	remaining := calculateDuration(currentDateTime, t.FastEnd)
 	body := schedulerMessage(domain.MotivationNearTarget(), t.UserID)
@@ -278,7 +278,7 @@ func buildNearTargetMotivationMessage(t repository.NotificationTarget, currentDa
 	)
 }
 
-func buildHydrationReminderMessage(t repository.NotificationTarget, elapsedHours int, currentDateTime string) string {
+func buildHydrationReminderMessage(t domain.NotificationTarget, elapsedHours int, currentDateTime string) string {
 	body := schedulerMessage(domain.HydrationNudges(), t.UserID)
 	if elapsedHours >= 24 && isWaterOrProlongedFastingName(t.FastingTypeName) {
 		body += "\n\n" + schedulerMessage(domain.ElectrolyteNudges(), t.UserID)
@@ -297,7 +297,7 @@ func buildHydrationReminderMessage(t repository.NotificationTarget, elapsedHours
 	)
 }
 
-func buildDrySafetyReminderMessage(t repository.NotificationTarget, elapsedHours int, currentDateTime string) string {
+func buildDrySafetyReminderMessage(t domain.NotificationTarget, elapsedHours int, currentDateTime string) string {
 	return fmt.Sprintf(
 		"⚠️ *Safety check dry fasting, %s*\n\n"+
 			"Sudah sekitar *%d jam* — sisa *%s*.\n\n"+
@@ -405,7 +405,7 @@ func (s *Scheduler) buildNoFastersMessage() string {
 	)
 }
 
-func (s *Scheduler) buildActiveFastersMessage(fasters []repository.NotificationTarget, currentDateTime string) string {
+func (s *Scheduler) buildActiveFastersMessage(fasters []domain.NotificationTarget, currentDateTime string) string {
 	var lines []string
 	for _, f := range fasters {
 		elapsed := calculateDuration(f.FastStart, currentDateTime)

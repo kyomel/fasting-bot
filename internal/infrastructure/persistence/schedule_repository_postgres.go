@@ -42,6 +42,9 @@ func (r *ScheduleRepositoryPostgres) FindActiveByUserID(userID domain.ID) (*doma
 	var schedule domain.FastingSchedule
 	err := r.findActiveByUserIDStmt.QueryRow(string(userID)).Scan(&schedule.ID, &schedule.UserID, &schedule.FastStart, &schedule.FastEnd, &schedule.FastingTypeName, &schedule.IsActive, &schedule.CreatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return &schedule, nil
@@ -195,6 +198,9 @@ func (r *ScheduleRepositoryPostgres) FindFastingStatsByUserID(userID domain.ID) 
 		WHERE s.user_id = $1
 	`, string(userID)).Scan(&stats.UserID, &stats.Name, &stats.TotalSessions, &stats.TotalMinutes, &stats.CurrentStreakDays, &stats.LongestStreakDays, &stats.LastCompletedDate, &stats.LastOpenedAt, &stats.LastDurationMinutes)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return &stats, nil
@@ -307,7 +313,7 @@ func (r *ScheduleRepositoryPostgres) CleanupOldFastingRecords(cutoff string) (in
 	return deletedRecords + deletedSchedules, nil
 }
 
-func (r *ScheduleRepositoryPostgres) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *ScheduleRepositoryPostgres) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error) {
 	rows, err := r.db.Query(`
 		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
@@ -346,7 +352,7 @@ func (r *ScheduleRepositoryPostgres) FindUsersToNotifyStart(currentTime, current
 	return scanNotificationTargets(rows)
 }
 
-func (r *ScheduleRepositoryPostgres) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *ScheduleRepositoryPostgres) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error) {
 	rows, err := r.db.Query(`
 		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
@@ -385,7 +391,7 @@ func (r *ScheduleRepositoryPostgres) FindUsersToNotifyEnd(currentTime, currentDa
 	return scanNotificationTargets(rows)
 }
 
-func (r *ScheduleRepositoryPostgres) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *ScheduleRepositoryPostgres) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]domain.NotificationTarget, error) {
 	rows, err := r.db.Query(`
 		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
@@ -413,7 +419,7 @@ func (r *ScheduleRepositoryPostgres) FindUsersForElapsedNotification(notificatio
 	return scanNotificationTargets(rows)
 }
 
-func (r *ScheduleRepositoryPostgres) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *ScheduleRepositoryPostgres) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]domain.NotificationTarget, error) {
 	rows, err := r.db.Query(`
 		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
@@ -440,7 +446,7 @@ func (r *ScheduleRepositoryPostgres) FindUsersBeforeTargetNotification(notificat
 	return scanNotificationTargets(rows)
 }
 
-func (r *ScheduleRepositoryPostgres) FindUsersWithActiveFasting(currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *ScheduleRepositoryPostgres) FindUsersWithActiveFasting(currentDateTime string) ([]domain.NotificationTarget, error) {
 	rows, err := r.db.Query(`
 		SELECT u.id, u.jid, u.phone, COALESCE(NULLIF(u.name, ''), u.phone), fs.fast_start, fs.fast_end, fs.fasting_type_name, COALESCE(ufs.current_streak_days, 0)
 		FROM users u
@@ -458,7 +464,7 @@ func (r *ScheduleRepositoryPostgres) FindUsersWithActiveFasting(currentDateTime 
 	return scanNotificationTargets(rows)
 }
 
-func (r *ScheduleRepositoryPostgres) FindUsersWithExpiredStreaks(currentDateTime string) ([]repository.ExpiredStreakTarget, error) {
+func (r *ScheduleRepositoryPostgres) FindUsersWithExpiredStreaks(currentDateTime string) ([]domain.ExpiredStreakTarget, error) {
 	rows, err := r.db.Query(`
 		SELECT ufs.user_id, u.jid, COALESCE(NULLIF(u.name, ''), u.phone), ufs.current_streak_days
 		FROM user_fasting_stats ufs
@@ -477,9 +483,9 @@ func (r *ScheduleRepositoryPostgres) FindUsersWithExpiredStreaks(currentDateTime
 	}
 	defer rows.Close()
 
-	var targets []repository.ExpiredStreakTarget
+	var targets []domain.ExpiredStreakTarget
 	for rows.Next() {
-		var t repository.ExpiredStreakTarget
+		var t domain.ExpiredStreakTarget
 		if err := rows.Scan(&t.UserID, &t.JID, &t.Name, &t.CurrentStreakDays); err != nil {
 			return nil, err
 		}

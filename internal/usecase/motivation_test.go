@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"database/sql"
 	"math/rand"
 	"strings"
 	"testing"
@@ -149,7 +148,7 @@ func (r *motivationUserRepo) Create(user *domain.User) error                 { r
 func (r *motivationUserRepo) UpdateName(userID domain.ID, name string) error { return nil }
 func (r *motivationUserRepo) FindByPhone(phone string) (*domain.User, error) {
 	if r.user == nil {
-		return nil, sql.ErrNoRows
+		return nil, repository.ErrNotFound
 	}
 	return r.user, nil
 }
@@ -163,7 +162,7 @@ func (r *motivationScheduleRepo) Create(schedule *domain.FastingSchedule) error 
 func (r *motivationScheduleRepo) DeactivateByUserID(userID domain.ID) error     { return nil }
 func (r *motivationScheduleRepo) FindActiveByUserID(userID domain.ID) (*domain.FastingSchedule, error) {
 	if r.schedule == nil {
-		return nil, sql.ErrNoRows
+		return nil, repository.ErrNotFound
 	}
 	return r.schedule, nil
 }
@@ -173,7 +172,7 @@ func (r *motivationScheduleRepo) ResetStaleCurrentStreaks(currentDate, currentDa
 	return nil
 }
 func (r *motivationScheduleRepo) FindFastingStatsByUserID(userID domain.ID) (*domain.FastingStats, error) {
-	return nil, sql.ErrNoRows
+	return nil, repository.ErrNotFound
 }
 func (r *motivationScheduleRepo) FindRecentFastingRecords(userID domain.ID, limit int) ([]domain.FastingRecord, error) {
 	return nil, nil
@@ -184,22 +183,22 @@ func (r *motivationScheduleRepo) FindFastingLeaderboard() ([]domain.FastingLeade
 func (r *motivationScheduleRepo) CleanupOldFastingRecords(cutoff string) (int64, error) {
 	return 0, nil
 }
-func (r *motivationScheduleRepo) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersWithActiveFasting(currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersWithActiveFasting(currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersWithExpiredStreaks(currentDateTime string) ([]repository.ExpiredStreakTarget, error) {
+func (r *motivationScheduleRepo) FindUsersWithExpiredStreaks(currentDateTime string) ([]domain.ExpiredStreakTarget, error) {
 	return nil, nil
 }
 func (r *motivationScheduleRepo) ResetStreakByUserID(userID domain.ID) error { return nil }

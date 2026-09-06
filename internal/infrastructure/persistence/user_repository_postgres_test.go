@@ -2,11 +2,13 @@ package persistence
 
 import (
 	"database/sql"
+	"errors"
 	"os"
 	"testing"
 
 	"fasting-bot/internal/domain"
 	"fasting-bot/internal/infrastructure/database"
+	"fasting-bot/internal/repository"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -151,8 +153,8 @@ func TestPostgresScheduleRepositoryStreakUpsert(t *testing.T) {
 	if err := scheduleRepo.DeactivateByUserID(user.ID); err != nil {
 		t.Fatalf("DeactivateByUserID() error = %v", err)
 	}
-	if _, err := scheduleRepo.FindActiveByUserID(user.ID); err != sql.ErrNoRows {
-		t.Fatalf("FindActiveByUserID() after deactivate = %v, want sql.ErrNoRows", err)
+	if _, err := scheduleRepo.FindActiveByUserID(user.ID); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("FindActiveByUserID() after deactivate = %v, want repository.ErrNotFound", err)
 	}
 }
 

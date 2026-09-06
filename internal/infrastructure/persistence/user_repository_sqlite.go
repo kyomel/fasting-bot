@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"database/sql"
+	"errors"
 	"strconv"
 
 	"fasting-bot/internal/domain"
@@ -49,6 +50,9 @@ func (r *UserRepositorySQLite) FindByPhone(phone string) (*domain.User, error) {
 	var user domain.User
 	err := r.findByPhoneStmt.QueryRow(phone).Scan(&user.ID, &user.Phone, &user.Name, &user.JID, &user.CreatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return &user, nil
@@ -58,6 +62,9 @@ func (r *UserRepositorySQLite) FindByID(id domain.ID) (*domain.User, error) {
 	var user domain.User
 	err := r.findByIDStmt.QueryRow(string(id)).Scan(&user.ID, &user.Phone, &user.Name, &user.JID, &user.CreatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	return &user, nil

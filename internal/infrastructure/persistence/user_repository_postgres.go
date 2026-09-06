@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"database/sql"
+	"errors"
 
 	"fasting-bot/internal/domain"
 	"fasting-bot/internal/repository"
@@ -54,6 +55,9 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 	var user domain.User
 	var username, passwordHash, email, name, jid sql.NullString
 	if err := row.Scan(&user.ID, &username, &passwordHash, &user.Phone, &email, &name, &jid, &user.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrNotFound
+		}
 		return nil, err
 	}
 	user.Username = username.String
