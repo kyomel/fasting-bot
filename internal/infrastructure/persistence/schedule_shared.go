@@ -1,14 +1,40 @@
 package persistence
 
 import (
+	"database/sql"
 	"time"
 
 	"fasting-bot/internal/domain"
 )
 
-// Shared pure date/streak logic used by both the SQLite and PostgreSQL
-// schedule repositories. Kept identical across dialects so streak semantics
-// stay the same regardless of the backing database.
+// Shared date/streak logic and row helpers for the schedule repository.
+const (
+	storeDateTimeLayout = "2006-01-02 15:04"
+	storeDateLayout     = "2006-01-02"
+)
+
+type userFastingStatsRow struct {
+	currentStreakDays  int
+	longestStreakDays  int
+	lastCompletedDate  string
+	lastStreakOpenedAt string
+	lastOpenedAt       string
+}
+
+func scanNotificationTargets(rows *sql.Rows) ([]domain.NotificationTarget, error) {
+	var targets []domain.NotificationTarget
+	for rows.Next() {
+		var t domain.NotificationTarget
+		if err := rows.Scan(&t.UserID, &t.JID, &t.Phone, &t.Name, &t.FastStart, &t.FastEnd, &t.FastingTypeName, &t.CurrentStreakDays); err != nil {
+			return nil, err
+		}
+		targets = append(targets, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return targets, nil
+}
 
 func fastingDateRange(record *domain.FastingRecord) (time.Time, time.Time, int, error) {
 	completedDate, err := time.Parse(storeDateLayout, record.CompletedDate)

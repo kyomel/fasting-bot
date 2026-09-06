@@ -153,6 +153,12 @@ func (r *motivationUserRepo) FindByPhone(phone string) (*domain.User, error) {
 	return r.user, nil
 }
 func (r *motivationUserRepo) FindByID(id domain.ID) (*domain.User, error) { return r.user, nil }
+func (r *motivationUserRepo) FindByUsername(username string) (*domain.User, error) {
+	return nil, repository.ErrNotFound
+}
+func (r *motivationUserRepo) FindByEmail(email string) (*domain.User, error) {
+	return nil, repository.ErrNotFound
+}
 
 type motivationScheduleRepo struct {
 	schedule *domain.FastingSchedule

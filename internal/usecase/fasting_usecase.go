@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,11 +17,17 @@ const (
 )
 
 const errCheckDataFormat = "gagal memeriksa data: %w"
+
+// ErrValidation marks input-validation failures so the HTTP layer can map
+// them to 400 without string matching.
+var ErrValidation = errors.New("validation failed")
+
 const msgNotRegistered = "❌ Kamu belum terdaftar. Kirim /daftar <nama> dulu."
 const errSaveScheduleFormat = "gagal menyimpan jadwal: %w"
 
 type FastingUsecase interface {
 	RegisterUser(phone, jid, name string) (string, error)
+	RegisterUserAPI(input RegisterInput) (*RegisterResult, error)
 	SetName(phone, name string) (string, error)
 	SetSchedule(phone, start, end string) (string, error)
 	GetStatus(phone string) (string, error)
@@ -36,7 +43,6 @@ type FastingUsecase interface {
 	SetFastingByDuration(phone string, durationHours int, isDry bool, startTime string) (string, error)
 	ScheduleFastingByDuration(phone string, durationHours int, isDry bool, dateInput, startTime string) (string, error)
 }
-
 
 type fastingUsecase struct {
 	userRepo         repository.UserRepository
@@ -125,5 +131,3 @@ func displayFastingTypeName(name string) string {
 	}
 	return name
 }
-
-

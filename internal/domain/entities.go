@@ -11,6 +11,7 @@ type User struct {
 	Name         string
 	JID          string
 	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type FastingSchedule struct {

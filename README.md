@@ -6,7 +6,7 @@ Bot WhatsApp untuk reminder fasting/IF (Intermittent Fasting) dengan notifikasi 
 
 - ⏰ Notifikasi otomatis saat fasting mulai dan berakhir
 - 📱 Bisa digunakan di grup
-- 🗄️ Database SQLite (ringan, tanpa server)
+- 🗄️ Database PostgreSQL (migrasi otomatis via goose saat start)
 - 📋 3 perintah utama: `/puasa`, `/buka`, `/batalkan`
 - 📋 Pendukung: `/daftar`, `/panduan`, `/pemula`, `/status`, `/motivasi`, `/stats`, `/badge`, `/leaderboard`
 
@@ -26,13 +26,12 @@ fasting-bot/
 │   │   └── fasting_usecase.go    # FastingUsecase interface + implementation
 │   ├── infrastructure/           # External implementations
 │   │   ├── database/
-│   │   │   ├── sqlite.go         # SQLite connection + migrations (mode lama)
-│   │   │   └── postgres.go       # PostgreSQL connection + goose migrations
-│   │   ├── persistence/          # Repository implementations (SQLite + PostgreSQL)
-│   │   │   ├── user_repository_sqlite.go / _postgres.go
-│   │   │   ├── schedule_repository_sqlite.go / _postgres.go
-│   │   │   ├── notification_repository_sqlite.go / _postgres.go
-│   │   │   ├── badge_repository_sqlite.go / _postgres.go
+│   │   │   └── postgres.go         # PostgreSQL connection + goose migrations
+│   │   ├── persistence/          # Repository implementations (PostgreSQL)
+│   │   │   ├── user_repository_postgres.go
+│   │   │   ├── schedule_repository_postgres.go
+│   │   │   ├── notification_repository_postgres.go
+│   │   │   ├── badge_repository_postgres.go
 │   │   │   ├── queries.go        # helper SQL dialect (placeholder, interval, dll)
 │   │   │   └── schedule_shared.go # logika streak/date dipakai kedua driver
 │   │   └── whatsapp/
@@ -55,7 +54,7 @@ fasting-bot/
 | **Domain** | Pure business entities, no external deps | `User`, `FastingSchedule` structs |
 | **Repository** | Interfaces/contracts for data access | `UserRepository`, `ScheduleRepository` |
 | **Usecase** | Business logic, orchestrates repositories | `RegisterUser`, `SetSchedule`, `GetStatus` |
-| **Infrastructure** | Implements repositories + external services | SQLite repos, WhatsApp client |
+| **Infrastructure** | Implements repositories + external services | PostgreSQL repos, WhatsApp client |
 | **Delivery** | Handles incoming messages/events | WhatsApp command handler, scheduler |
 
 Dependency direction: **Delivery → Usecase → Repository → Domain**
@@ -66,8 +65,9 @@ Domain tidak bergantung pada layer lainnya.
 
 ### Prasyarat
 
-- Go 1.22+
-- SQLite3
+- Go 1.25+
+- PostgreSQL (wajib, via `DB_CONNECTION`)
+- `libsqlite3-dev` saat build (untuk WhatsApp session store)
 - Nomor WhatsApp untuk bot (isi di `.env`)
 
 ### 1. Install Dependencies
@@ -113,7 +113,7 @@ Saat pertama kali running, bot akan menampilkan **QR code di terminal**:
 3. Arahkan kamera HP ke QR code di terminal
 4. Tunggu hingga muncul "✅ Login successful!"
 
-Session akan tersimpan di path `SESSION_PATH`, jadi tidak perlu scan QR tiap kali run. Untuk production, arahkan `DATABASE_PATH` dan `SESSION_PATH` ke file berbeda di folder data yang permission-nya ketat, misalnya `/opt/fasting-bot/data`. Jika QR perlu direset, hapus hanya `SESSION_PATH`; jangan hapus `DATABASE_PATH` karena file itu menyimpan user, jadwal, `/stats`, dan `/leaderboard`.
+Data aplikasi (user, jadwal, `/stats`, `/leaderboard`) tersimpan di PostgreSQL (`DB_CONNECTION`). Session WhatsApp tersimpan di file SQLite `SESSION_PATH`, jadi tidak perlu scan QR tiap kali run. Jika QR perlu direset, hapus hanya `SESSION_PATH`; data puasa di PostgreSQL tetap aman.
 
 > Security: isi `ALLOWED_GROUP_JID` supaya command hanya diproses dari grup yang dipercaya. Balasan command selalu dikirim ke grup; chat pribadi dari bot ke nomor user hanya dipakai untuk notifikasi otomatis mulai/selesai puasa.
 
@@ -223,7 +223,7 @@ Dengan Clean Architecture, menambah fitur baru menjadi mudah:
 Contoh: Menambah fitur riwayat fasting
 - Tambah `FastingHistory` entity
 - Buat `HistoryRepository` interface
-- Implement `HistoryRepositorySQLite`
+- Implement `HistoryRepositoryPostgres`
 - Tambah `GetHistory()` di usecase
 - Tambah `/riwayat` command di handler
 
@@ -241,16 +241,13 @@ Contoh: Menambah fitur riwayat fasting
 - Pastikan kamera HP bersih dan cukup terang saat scan
 
 ### Database error
-- Hapus file di `DATABASE_PATH` untuk reset database (hati-hati, data hilang!)
-- Pastikan folder writable
+- Reset database: jalankan migrasi ulang / restore dari backup `pg_dump` (hati-hati, data hilang!)
+- Pastikan `DB_CONNECTION` valid dan PostgreSQL reachable
 
 ## Reset Data
 
 ```bash
-# Hapus database (semua data user & jadwal terhapus!)
-rm /opt/fasting-bot/data/fasting-bot.db
-
-# Reset session/QR saja (progress tetap aman)
+# Reset session/QR saja (progress di PostgreSQL tetap aman)
 sudo /opt/fasting-bot/monitor.sh reset-session
 ```
 
@@ -258,9 +255,8 @@ Untuk production, jangan reset QR dengan menghapus seluruh folder `/opt/fasting-
 
 ```text
 /opt/fasting-bot/data/
-  fasting-bot.db          # data permanen: users, schedules, stats, leaderboard
   whatsapp-session.db     # session WhatsApp, boleh dihapus untuk scan QR ulang
-  backups/                # backup fasting-bot.db
+  backups/                # backup pg_dump PostgreSQL (fasting-bot-*.sql.gz)
 ```
 
 Backup harian bisa dijalankan dengan:
@@ -282,4 +278,4 @@ Untuk skala kecil, backup lokal di folder `backups/` cukup dulu untuk mencegah p
 - Bot menggunakan **unofficial WhatsApp Web API** (whatsmeow)
 - Jangan gunakan untuk spam atau bulk messaging
 - Ideal untuk grup kecil (< 50 orang)
-- Untuk production skala kecil, jalankan backup `fasting-bot.db` rutin ke folder lokal `backups/`; sinkronisasi ke storage di luar VPS bisa ditambahkan nanti
+- Untuk production skala kecil, jalankan backup `pg_dump` rutin ke folder lokal `backups/` (`sudo /opt/fasting-bot/monitor.sh backup`); sinkronisasi ke storage di luar VPS bisa ditambahkan nanti

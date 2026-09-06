@@ -8,6 +8,8 @@ type UserRepository interface {
 	Create(user *domain.User) error
 	UpdateName(userID domain.ID, name string) error
 	FindByPhone(phone string) (*domain.User, error)
+	FindByUsername(username string) (*domain.User, error)
+	FindByEmail(email string) (*domain.User, error)
 	FindByID(id domain.ID) (*domain.User, error)
 }
 

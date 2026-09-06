@@ -15,12 +15,12 @@ var (
 	AdminNumber     string
 	AllowedGroupJID string
 	GroupName       string
-	DatabasePath    string
 	DBConnection    string
 	SessionPath     string
 	QRCodePath      string
 	QRCodeHost      string
 	AppTimezone     string
+	APIAddr         string
 	Location        *time.Location
 )
 
@@ -38,6 +38,7 @@ func Load() {
 	QRCodePath = getEnv("QR_CODE_PATH", "")
 	QRCodeHost = getEnv("QR_CODE_HOST", "")
 	AppTimezone = getEnv("APP_TIMEZONE", "Asia/Jakarta")
+	APIAddr = getEnv("API_ADDR", ":8080")
 	Location = loadLocation(AppTimezone)
 }
 
