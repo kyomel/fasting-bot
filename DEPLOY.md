@@ -19,9 +19,9 @@ GitHub Actions
 VPS DomaiNesia (Ubuntu 22.04)
     ├── fasting-bot binary
     ├── systemd service (auto-restart)
-    ├── SQLite app database (users, stats, leaderboard)
-    ├── WhatsApp session database
-    └── backup/restore helper
+    ├── PostgreSQL app database (users, stats, leaderboard; via DB_CONNECTION)
+    ├── WhatsApp session database (SQLite file)
+    └── backup/restore helper (pg_dump)
 ```
 
 ## 📋 Prerequisites
@@ -38,7 +38,7 @@ ssh root@<VPS_IP>
 apt update && apt upgrade -y
 
 # Install utilities
-apt install -y curl wget git htop nano sqlite3
+apt install -y curl wget git htop nano postgresql-client
 
 # Buat user untuk bot
 useradd --system --home /opt/fasting-bot --shell /bin/bash fastingbot
@@ -90,11 +90,12 @@ BOT_NUMBER=628xxxxxxxxxx
 ADMIN_NUMBER=628xxxxxxxxxx
 ALLOWED_GROUP_JID=120xxxxxxxxxx@g.us
 GROUP_NAME=Fasting Group
-DATABASE_PATH=/opt/fasting-bot/data/fasting-bot.db
+DB_CONNECTION=postgresql://user:pass@host:port/db
 SESSION_PATH=/opt/fasting-bot/data/whatsapp-session.db
 QR_CODE_PATH=
 QR_CODE_HOST=
 APP_TIMEZONE=Asia/Jakarta
+API_ADDR=:8080
 EOF
 
 chown fastingbot:fastingbot /opt/fasting-bot/.env
@@ -155,14 +156,13 @@ crontab -l
 # → 0 3 * * * /opt/fasting-bot/monitor.sh backup
 ```
 
-Backup memakai SQLite Online Backup API lewat `sqlite3 .backup`, jadi tidak perlu menghentikan bot. File yang dibuat:
+Backup memakai `pg_dump` lewat `monitor.sh backup`, jadi tidak perlu menghentikan bot. File yang dibuat:
 
 ```bash
-/opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.db
 /opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.sql.gz
 ```
 
-Yang dibackup hanya `DATABASE_PATH` (`fasting-bot.db`), karena berisi data permanen:
+Yang dibackup adalah database PostgreSQL (`DB_CONNECTION`), karena berisi data permanen:
 
 - `users`
 - `fasting_schedules`
@@ -170,7 +170,7 @@ Yang dibackup hanya `DATABASE_PATH` (`fasting-bot.db`), karena berisi data perma
 - `user_fasting_stats` untuk `/stats` dan `/leaderboard`
 - `notification_logs`
 
-`SESSION_PATH` (`whatsapp-session.db`) sengaja tidak dibackup rutin. Session WhatsApp boleh dihapus untuk scan QR ulang, sedangkan data puasa tidak boleh ikut terhapus.
+`SESSION_PATH` (`whatsapp-session.db`, SQLite) sengaja tidak dibackup rutin. Session WhatsApp boleh dihapus untuk scan QR ulang, sedangkan data puasa di PostgreSQL tidak boleh ikut terhapus.
 
 Untuk skala kecil, backup lokal di `/opt/fasting-bot/data/backups` sudah cukup sebagai proteksi dari salah hapus DB saat reset QR atau deploy. Nanti jika user dan data sudah makin banyak, baru pertimbangkan sync folder backup ini ke storage lain seperti S3/R2/Google Drive atau server kedua.
 
@@ -181,15 +181,14 @@ Untuk skala kecil, backup lokal di `/opt/fasting-bot/data/backups` sudah cukup s
 sudo /opt/fasting-bot/monitor.sh restore
 
 # Atau restore dari file tertentu
-sudo /opt/fasting-bot/monitor.sh restore /opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.db
 sudo /opt/fasting-bot/monitor.sh restore /opt/fasting-bot/data/backups/fasting-bot-YYYYMMDD-HHMMSS.sql.gz
 ```
 
-Restore akan menghentikan service, menyimpan salinan DB lama sebagai `pre-restore-*.db`, menghapus `fasting-bot.db-wal`/`fasting-bot.db-shm`, lalu menyalakan service lagi.
+Restore akan menghentikan service, me-restore dump via `psql`, lalu menyalakan service lagi.
 
 ### Reset QR / Session WhatsApp yang Aman
 
-Jika hanya ingin scan QR ulang, jangan hapus folder data dan jangan hapus `fasting-bot.db`.
+Jika hanya ingin scan QR ulang, jangan hapus folder data dan jangan utak-atik database PostgreSQL.
 
 ```bash
 sudo /opt/fasting-bot/monitor.sh reset-session
@@ -203,7 +202,7 @@ Command ini hanya menghapus:
 /opt/fasting-bot/data/whatsapp-session.db-shm
 ```
 
-Progress user, `/stats`, dan `/leaderboard` tetap aman di `fasting-bot.db`.
+Progress user, `/stats`, dan `/leaderboard` tetap aman di PostgreSQL.
 
 ## 🛠️ Troubleshooting
 
@@ -240,7 +239,7 @@ file /opt/fasting-bot/fasting-bot
 Workflow lengkap ada di `.github/workflows/deploy.yml`.
 
 **Features**:
-- ✅ Cross-compile dengan CGO (sqlite3 support)
+- ✅ Cross-compile dengan CGO (untuk WhatsApp session store via go-sqlite3)
 - ✅ Artifact upload/download (secure)
 - ✅ SSH deployment dengan known_hosts
 - ✅ Automatic systemd reload dan restart

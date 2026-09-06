@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"database/sql"
 	"math/rand"
 	"strings"
 	"testing"
@@ -14,7 +13,7 @@ import (
 
 func TestGetMotivation(t *testing.T) {
 	now := time.Now().In(config.Location).Truncate(time.Minute)
-	user := &domain.User{ID: 1, Phone: "+628123456789", Name: "Kyo"}
+	user := &domain.User{ID: domain.ID("1"), Phone: "+628123456789", Name: "Kyo"}
 
 	tests := map[string]struct {
 		user     *domain.User
@@ -132,8 +131,8 @@ func TestScheduleTeaserForDryFastingDoesNotSuggestWater(t *testing.T) {
 
 func testSchedule(start, end time.Time, fastingTypeName string) *domain.FastingSchedule {
 	return &domain.FastingSchedule{
-		ID:              10,
-		UserID:          1,
+		ID:              domain.ID("10"),
+		UserID:          domain.ID("1"),
 		FastStart:       formatStoredTime(start),
 		FastEnd:         formatStoredTime(end),
 		FastingTypeName: fastingTypeName,
@@ -145,25 +144,31 @@ type motivationUserRepo struct {
 	user *domain.User
 }
 
-func (r *motivationUserRepo) Create(user *domain.User) error             { return nil }
-func (r *motivationUserRepo) UpdateName(userID int64, name string) error { return nil }
+func (r *motivationUserRepo) Create(user *domain.User) error                 { return nil }
+func (r *motivationUserRepo) UpdateName(userID domain.ID, name string) error { return nil }
 func (r *motivationUserRepo) FindByPhone(phone string) (*domain.User, error) {
 	if r.user == nil {
-		return nil, sql.ErrNoRows
+		return nil, repository.ErrNotFound
 	}
 	return r.user, nil
 }
-func (r *motivationUserRepo) FindByID(id int64) (*domain.User, error) { return r.user, nil }
+func (r *motivationUserRepo) FindByID(id domain.ID) (*domain.User, error) { return r.user, nil }
+func (r *motivationUserRepo) FindByUsername(username string) (*domain.User, error) {
+	return nil, repository.ErrNotFound
+}
+func (r *motivationUserRepo) FindByEmail(email string) (*domain.User, error) {
+	return nil, repository.ErrNotFound
+}
 
 type motivationScheduleRepo struct {
 	schedule *domain.FastingSchedule
 }
 
 func (r *motivationScheduleRepo) Create(schedule *domain.FastingSchedule) error { return nil }
-func (r *motivationScheduleRepo) DeactivateByUserID(userID int64) error         { return nil }
-func (r *motivationScheduleRepo) FindActiveByUserID(userID int64) (*domain.FastingSchedule, error) {
+func (r *motivationScheduleRepo) DeactivateByUserID(userID domain.ID) error     { return nil }
+func (r *motivationScheduleRepo) FindActiveByUserID(userID domain.ID) (*domain.FastingSchedule, error) {
 	if r.schedule == nil {
-		return nil, sql.ErrNoRows
+		return nil, repository.ErrNotFound
 	}
 	return r.schedule, nil
 }
@@ -172,10 +177,10 @@ func (r *motivationScheduleRepo) UpsertFastingStats(record *domain.FastingRecord
 func (r *motivationScheduleRepo) ResetStaleCurrentStreaks(currentDate, currentDateTime string) error {
 	return nil
 }
-func (r *motivationScheduleRepo) FindFastingStatsByUserID(userID int64) (*domain.FastingStats, error) {
-	return nil, sql.ErrNoRows
+func (r *motivationScheduleRepo) FindFastingStatsByUserID(userID domain.ID) (*domain.FastingStats, error) {
+	return nil, repository.ErrNotFound
 }
-func (r *motivationScheduleRepo) FindRecentFastingRecords(userID int64, limit int) ([]domain.FastingRecord, error) {
+func (r *motivationScheduleRepo) FindRecentFastingRecords(userID domain.ID, limit int) ([]domain.FastingRecord, error) {
 	return nil, nil
 }
 func (r *motivationScheduleRepo) FindFastingLeaderboard() ([]domain.FastingLeaderboardEntry, error) {
@@ -184,38 +189,38 @@ func (r *motivationScheduleRepo) FindFastingLeaderboard() ([]domain.FastingLeade
 func (r *motivationScheduleRepo) CleanupOldFastingRecords(cutoff string) (int64, error) {
 	return 0, nil
 }
-func (r *motivationScheduleRepo) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersToNotifyStart(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersToNotifyEnd(currentTime, currentDate, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersForElapsedNotification(notificationType string, triggerAfterHours int, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersBeforeTargetNotification(notificationType string, leadHours int, currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersWithActiveFasting(currentDateTime string) ([]repository.NotificationTarget, error) {
+func (r *motivationScheduleRepo) FindUsersWithActiveFasting(currentDateTime string) ([]domain.NotificationTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) FindUsersWithExpiredStreaks(currentDateTime string) ([]repository.ExpiredStreakTarget, error) {
+func (r *motivationScheduleRepo) FindUsersWithExpiredStreaks(currentDateTime string) ([]domain.ExpiredStreakTarget, error) {
 	return nil, nil
 }
-func (r *motivationScheduleRepo) ResetStreakByUserID(userID int64) error { return nil }
+func (r *motivationScheduleRepo) ResetStreakByUserID(userID domain.ID) error { return nil }
 
 type motivationNotificationRepo struct{}
 
-func (r *motivationNotificationRepo) LogNotification(userID int64, notificationType string) error {
+func (r *motivationNotificationRepo) LogNotification(userID domain.ID, notificationType string) error {
 	return nil
 }
 
 type motivationBadgeRepo struct{}
 
-func (r *motivationBadgeRepo) EarnedBadges(userID int64) (map[domain.BadgeKey]struct{}, error) {
+func (r *motivationBadgeRepo) EarnedBadges(userID domain.ID) (map[domain.BadgeKey]struct{}, error) {
 	return map[domain.BadgeKey]struct{}{}, nil
 }
 
-func (r *motivationBadgeRepo) AwardBadges(userID int64, keys []domain.BadgeKey) error {
+func (r *motivationBadgeRepo) AwardBadges(userID domain.ID, keys []domain.BadgeKey) error {
 	return nil
 }

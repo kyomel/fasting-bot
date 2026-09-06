@@ -3,16 +3,20 @@ package domain
 import "time"
 
 type User struct {
-	ID        int64
-	Phone     string
-	Name      string
-	JID       string
-	CreatedAt time.Time
+	ID           ID
+	Username     string
+	PasswordHash string
+	Phone        string
+	Email        string
+	Name         string
+	JID          string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type FastingSchedule struct {
-	ID              int64
-	UserID          int64
+	ID              ID
+	UserID          ID
 	FastStart       string
 	FastEnd         string
 	FastingTypeName string
@@ -21,16 +25,16 @@ type FastingSchedule struct {
 }
 
 type NotificationLog struct {
-	ID               int64
-	UserID           int64
+	ID               ID
+	UserID           ID
 	NotificationType string
 	SentAt           time.Time
 }
 
 type FastingRecord struct {
-	ID              int64
-	UserID          int64
-	ScheduleID      int64
+	ID              ID
+	UserID          ID
+	ScheduleID      ID
 	FastingTypeName string
 	FastStart       string
 	PlannedFastEnd  string
@@ -42,7 +46,7 @@ type FastingRecord struct {
 }
 
 type FastingStats struct {
-	UserID              int64
+	UserID              ID
 	Name                string
 	TotalSessions       int
 	TotalMinutes        int
@@ -54,9 +58,30 @@ type FastingStats struct {
 }
 
 type FastingLeaderboardEntry struct {
-	UserID            int64
+	UserID            ID
 	Name              string
 	CurrentStreakDays int
 	TotalMinutes      int
 	TotalSessions     int
+}
+
+// NotificationTarget is a read-model returned by schedule queries to identify
+// users that should receive a proactive notification.
+type NotificationTarget struct {
+	UserID            ID
+	JID               string
+	Phone             string
+	Name              string
+	FastStart         string
+	FastEnd           string
+	FastingTypeName   string
+	CurrentStreakDays int
+}
+
+// ExpiredStreakTarget is a read-model for users whose streak has expired.
+type ExpiredStreakTarget struct {
+	UserID            ID
+	JID               string
+	Name              string
+	CurrentStreakDays int
 }
