@@ -32,6 +32,6 @@ race: ## Run package tests with the race detector.
 tidy: ## Clean up module dependencies.
 	@go mod tidy
 
-clean: ## Remove build output and local SQLite files.
+clean: ## Remove build output and local session files.
 	@rm -rf $(BIN_DIR)
-	@rm -f *.db *.db-*
+	@rm -f whatsapp-session.db*

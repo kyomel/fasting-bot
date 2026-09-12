@@ -1,6 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+# monitor.sh — healthcheck + WhatsApp session reset + Postgres backup helpers.
+#
+# Application database is PostgreSQL (DB_CONNECTION). Backups use pg_dump;
+# the SQLite helpers were removed with the SQLite app-DB cutover. The
+# WhatsApp session store (SESSION_PATH) is still SQLite and is managed only
+# by reset-session.
+
 ENV_FILE="${ENV_FILE:-/opt/fasting-bot/.env}"
 
 read_env_value() {
@@ -23,8 +30,7 @@ read_env_value() {
 DATA_DIR="${DATA_DIR:-/opt/fasting-bot/data}"
 LOG="${LOG:-$DATA_DIR/monitor.log}"
 BACKUP_DIR="${BACKUP_DIR:-$DATA_DIR/backups}"
-APP_DB="${DATABASE_PATH:-$(read_env_value DATABASE_PATH)}"
-APP_DB="${APP_DB:-$DATA_DIR/fasting-bot.db}"
+DB_URL="${DB_CONNECTION:-$(read_env_value DB_CONNECTION)}"
 SESSION_DB="${SESSION_PATH:-$(read_env_value SESSION_PATH)}"
 SESSION_DB="${SESSION_DB:-$DATA_DIR/whatsapp-session.db}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-$(read_env_value BACKUP_RETENTION_DAYS)}"
@@ -36,16 +42,12 @@ log() {
   echo "[$(date '+%F %T')] $*" >> "$LOG"
 }
 
-require_sqlite3() {
-  if ! command -v sqlite3 >/dev/null 2>&1; then
-    log "ERROR - sqlite3 is required for backup/restore"
-    echo "sqlite3 is required" >&2
+require_db_url() {
+  if [ -z "$DB_URL" ]; then
+    log "ERROR - DB_CONNECTION is not set (env or $ENV_FILE)"
+    echo "DB_CONNECTION is not set" >&2
     exit 1
   fi
-}
-
-latest_backup() {
-  find "$BACKUP_DIR" -type f -name 'fasting-bot-*.db' -print | sort | tail -n 1
 }
 
 case "${1:-}" in
@@ -58,66 +60,31 @@ case "${1:-}" in
     fi
     ;;
   backup)
-    require_sqlite3
-    if [ ! -f "$APP_DB" ]; then
-      log "ERROR - app database not found: $APP_DB"
-      exit 1
-    fi
-
+    require_db_url
     stamp="$(date +%Y%m%d-%H%M%S)"
-    tmp="$BACKUP_DIR/.fasting-bot-$stamp.db.tmp"
-    dest="$BACKUP_DIR/fasting-bot-$stamp.db"
-    dump="$BACKUP_DIR/fasting-bot-$stamp.sql.gz"
+    dest="$BACKUP_DIR/fasting-bot-$stamp.sql.gz"
 
-    find "$BACKUP_DIR" -type f \( -name 'fasting-bot-*.db' -o -name 'fasting-bot-*.sql.gz' \) -mtime +"$RETENTION_DAYS" -delete 2>/dev/null || true
+    find "$BACKUP_DIR" -type f -name 'fasting-bot-*.sql.gz' -mtime +"$RETENTION_DAYS" -delete 2>/dev/null || true
 
-    sqlite3 "$APP_DB" "PRAGMA wal_checkpoint(PASSIVE);" >/dev/null
-    sqlite3 "$APP_DB" ".backup '$tmp'"
-    if [ "$(sqlite3 "$tmp" "PRAGMA quick_check;")" != "ok" ]; then
-      rm -f "$tmp"
-      log "ERROR - backup quick_check failed"
-      exit 1
-    fi
+    pg_dump "$DB_URL" | gzip -c > "$dest"
+    chmod 600 "$dest"
 
-    mv "$tmp" "$dest"
-    sqlite3 "$dest" ".dump" | gzip -c > "$dump"
-    chmod 600 "$dest" "$dump"
-
-    log "Backup done: $dest and $dump"
+    log "Backup done: $dest"
     ;;
   restore)
-    require_sqlite3
-    backup="${2:-$(latest_backup)}"
+    require_db_url
+    backup="${2:-$(find "$BACKUP_DIR" -type f -name 'fasting-bot-*.sql.gz' -print | sort | tail -n 1)}"
     if [ -z "$backup" ] || [ ! -f "$backup" ]; then
       log "ERROR - backup file not found: ${backup:-<none>}"
       echo "backup file not found: ${backup:-<none>}" >&2
       exit 1
     fi
 
-    stamp="$(date +%Y%m%d-%H%M%S)"
-    pre_restore="$BACKUP_DIR/pre-restore-$stamp.db"
-
     sudo systemctl stop fasting-bot
-    if [ -f "$APP_DB" ]; then
-      sqlite3 "$APP_DB" ".backup '$pre_restore'" || cp "$APP_DB" "$pre_restore"
-      chmod 600 "$pre_restore" || true
-    fi
-
-    rm -f "$APP_DB" "$APP_DB-wal" "$APP_DB-shm"
-    if [[ "$backup" == *.sql.gz ]]; then
-      gzip -dc "$backup" | sqlite3 "$APP_DB"
-    else
-      cp "$backup" "$APP_DB"
-    fi
-    chown fastingbot:fastingbot "$APP_DB" 2>/dev/null || true
-    chmod 600 "$APP_DB"
-    if [ "$(sqlite3 "$APP_DB" "PRAGMA quick_check;")" != "ok" ]; then
-      log "ERROR - restored database quick_check failed from $backup"
-      exit 1
-    fi
+    gzip -dc "$backup" | psql "$DB_URL"
     sudo systemctl start fasting-bot
 
-    log "Restore done from $backup; previous DB saved at $pre_restore"
+    log "Restore done from $backup"
     ;;
   reset-session)
     sudo systemctl stop fasting-bot
@@ -126,7 +93,7 @@ case "${1:-}" in
     log "WhatsApp session reset only: $SESSION_DB"
     ;;
   *)
-    echo "Usage: $0 {healthcheck|backup|restore [backup.db|backup.sql.gz]|reset-session}"
+    echo "Usage: $0 {healthcheck|backup|restore [backup.sql.gz]|reset-session}"
     exit 1
     ;;
 esac

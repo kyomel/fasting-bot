@@ -15,11 +15,12 @@ var (
 	AdminNumber     string
 	AllowedGroupJID string
 	GroupName       string
-	DatabasePath    string
+	DBConnection    string
 	SessionPath     string
 	QRCodePath      string
 	QRCodeHost      string
 	AppTimezone     string
+	APIAddr         string
 	Location        *time.Location
 )
 
@@ -32,11 +33,12 @@ func Load() {
 	AdminNumber = getEnv("ADMIN_NUMBER", "")
 	AllowedGroupJID = getEnv("ALLOWED_GROUP_JID", "")
 	GroupName = getEnv("GROUP_NAME", "Fasting Group")
-	DatabasePath = getEnv("DATABASE_PATH", "fasting-bot.db")
+	DBConnection = getEnv("DB_CONNECTION", "")
 	SessionPath = getEnv("SESSION_PATH", "whatsapp-session.db")
 	QRCodePath = getEnv("QR_CODE_PATH", "")
 	QRCodeHost = getEnv("QR_CODE_HOST", "")
 	AppTimezone = getEnv("APP_TIMEZONE", "Asia/Jakarta")
+	APIAddr = getEnv("API_ADDR", ":8080")
 	Location = loadLocation(AppTimezone)
 }
 
