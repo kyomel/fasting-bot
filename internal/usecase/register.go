@@ -24,11 +24,24 @@ type RegisterInput struct {
 // RegisterResult is the public projection of a registered user.
 // PasswordHash is never returned.
 type RegisterResult struct {
-	ID       domain.ID `json:"id"`
-	Username string    `json:"username"`
-	Phone    string    `json:"phone"`
-	Email    string    `json:"email"`
-	Name     string    `json:"name"`
+	ID       domain.ID   `json:"id"`
+	Username string      `json:"username"`
+	Phone    string      `json:"phone"`
+	Email    string      `json:"email"`
+	Name     string      `json:"name"`
+	Role     domain.Role `json:"role"`
+}
+
+// publicUser projects a domain user into its API-safe shape.
+func publicUser(user *domain.User) RegisterResult {
+	return RegisterResult{
+		ID:       user.ID,
+		Username: user.Username,
+		Phone:    user.Phone,
+		Email:    user.Email,
+		Name:     user.Name,
+		Role:     user.Role,
+	}
 }
 
 // RegisterUserAPI registers a user with username/password credentials for
@@ -100,13 +113,8 @@ func (u *fastingUsecase) RegisterUserAPI(input RegisterInput) (*RegisterResult, 
 		return nil, fmt.Errorf("gagal mendaftar: %w", err)
 	}
 
-	return &RegisterResult{
-		ID:       user.ID,
-		Username: user.Username,
-		Phone:    user.Phone,
-		Email:    user.Email,
-		Name:     user.Name,
-	}, nil
+	result := publicUser(user)
+	return &result, nil
 }
 
 // normalizeRegisterPhone reuses the WhatsApp phone contract: "+"-prefixed

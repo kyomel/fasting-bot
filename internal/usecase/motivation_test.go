@@ -84,6 +84,7 @@ func TestGetMotivation(t *testing.T) {
 				&motivationScheduleRepo{schedule: tt.schedule},
 				&motivationNotificationRepo{},
 				&motivationBadgeRepo{},
+				newFakeAuthSessionRepo(),
 			)
 
 			got, err := uc.GetMotivation("+628123456789")

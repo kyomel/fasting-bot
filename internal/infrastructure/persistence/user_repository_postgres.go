@@ -21,11 +21,11 @@ type UserRepositoryPostgres struct {
 func NewUserRepositoryPostgres(db *sql.DB) repository.UserRepository {
 	r := &UserRepositoryPostgres{db: db}
 
-	r.findByPhoneStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, created_at, updated_at FROM users WHERE phone = $1")
-	r.findByNameStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, created_at, updated_at FROM users WHERE username = $1")
-	r.findByEmailStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, created_at, updated_at FROM users WHERE email = $1")
-	r.findByIDStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, created_at, updated_at FROM users WHERE id = $1")
-	r.createStmt, _ = db.Prepare("INSERT INTO users (username, password_hash, phone, email, name, jid) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at")
+	r.findByPhoneStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, role, created_at, updated_at FROM users WHERE phone = $1")
+	r.findByNameStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, role, created_at, updated_at FROM users WHERE username = $1")
+	r.findByEmailStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, role, created_at, updated_at FROM users WHERE email = $1")
+	r.findByIDStmt, _ = db.Prepare("SELECT id, username, password_hash, phone, email, name, jid, role, created_at, updated_at FROM users WHERE id = $1")
+	r.createStmt, _ = db.Prepare("INSERT INTO users (username, password_hash, phone, email, name, jid) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, role, created_at, updated_at")
 	r.updateNameStmt, _ = db.Prepare("UPDATE users SET name = $1, updated_at = now() WHERE id = $2")
 
 	return r
@@ -43,7 +43,7 @@ func (r *UserRepositoryPostgres) Create(user *domain.User) error {
 		email = sql.NullString{String: user.Email, Valid: true}
 	}
 
-	err := r.createStmt.QueryRow(username, passwordHash, user.Phone, email, user.Name, user.JID).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	err := r.createStmt.QueryRow(username, passwordHash, user.Phone, email, user.Name, user.JID).Scan(&user.ID, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return mapUserConstraintError(err)
 	}
@@ -60,7 +60,8 @@ func (r *UserRepositoryPostgres) UpdateName(userID domain.ID, name string) error
 func scanUser(row *sql.Row) (*domain.User, error) {
 	var user domain.User
 	var username, passwordHash, email, name, jid sql.NullString
-	if err := row.Scan(&user.ID, &username, &passwordHash, &user.Phone, &email, &name, &jid, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	var role string
+	if err := row.Scan(&user.ID, &username, &passwordHash, &user.Phone, &email, &name, &jid, &role, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, repository.ErrNotFound
 		}
@@ -71,6 +72,7 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 	user.Email = email.String
 	user.Name = name.String
 	user.JID = jid.String
+	user.Role = domain.Role(role)
 	return &user, nil
 }
 

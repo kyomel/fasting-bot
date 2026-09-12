@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"fasting-bot/internal/domain"
 )
 
@@ -31,6 +33,12 @@ type ScheduleRepository interface {
 	FindUsersWithActiveFasting(currentDateTime string) ([]domain.NotificationTarget, error)
 	FindUsersWithExpiredStreaks(currentDateTime string) ([]domain.ExpiredStreakTarget, error)
 	ResetStreakByUserID(userID domain.ID) error
+}
+
+type AuthSessionRepository interface {
+	Create(session *domain.AuthSession) error
+	FindActiveByTokenHash(tokenHash string, now time.Time) (*domain.AuthSession, error)
+	RevokeByTokenHash(tokenHash string) error
 }
 
 type NotificationRepository interface {

@@ -169,7 +169,41 @@ Data aplikasi (user, jadwal, `/stats`, `/leaderboard`) tersimpan di PostgreSQL (
 | `/bantuan` | Bantuan command | `/bantuan` |
 | `/info` | Info bot | `/info` |
 
-## Jenis-Jenis Puasa
+## REST API
+
+REST API berjalan di `API_ADDR` (default `:8080`). Autentikasi memakai
+**opaque bearer token** (256-bit, disimpan di DB sebagai SHA-256 hash,
+TTL 24 jam, bisa di-revoke). Password disimpan sebagai bcrypt hash.
+
+| Method | Path | Auth | Deskripsi |
+|---|---|---|---|
+| `POST` | `/api/v1/users/register` | publik | Daftar akun API (`username`, `password` min 8, `phone`, `email`/`name` opsional) |
+| `POST` | `/api/v1/auth/login` | publik | Login -> `{access_token, token_type, expires_at, user}` |
+| `POST` | `/api/v1/auth/logout` | Bearer | Revoke sesi aktif (idempoten) |
+| `GET` | `/api/v1/users/me` | Bearer | Profil user yang sedang login |
+| `GET` | `/healthz` | publik | Health check |
+
+Contoh:
+
+```bash
+# login -> simpan access_token
+curl -X POST localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"kyomel","password":"rahasia-kuat-123"}'
+
+# akses endpoint protected
+curl localhost:8080/api/v1/users/me \
+  -H 'Authorization: Bearer <access_token>'
+```
+
+Login gagal selalu menjawab `401 {"error":"invalid username or password"}`
+(generic, anti user-enumeration). Role `admin` disiapkan via kolom
+`users.role` (`user`/`admin`, CHECK constraint); middleware `requireRole`
+siap dipakai untuk endpoint admin berikutnya.
+
+> **Production:** bearer token adalah kredensial plaintext. Wajib deploy di
+> belakang reverse proxy HTTPS (nginx/caddy) - jangan expose `API_ADDR`
+> polos ke internet.
 
 Semua jenis via `/puasa <durasi>` atau preset cepat:
 

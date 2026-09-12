@@ -16,7 +16,7 @@ import (
 // ErrConflict, and short passwords fail validation.
 func TestRegisterUserAPIHashesPasswordAndRejectsDuplicates(t *testing.T) {
 	repo := newRegisterFakeRepo()
-	uc := NewFastingUsecase(repo, &motivationScheduleRepo{}, &motivationNotificationRepo{}, &motivationBadgeRepo{})
+	uc := NewFastingUsecase(repo, &motivationScheduleRepo{}, &motivationNotificationRepo{}, &motivationBadgeRepo{}, newFakeAuthSessionRepo())
 
 	got, err := uc.RegisterUserAPI(RegisterInput{
 		Username: "kyomel",
@@ -83,6 +83,9 @@ func (r *registerFakeRepo) Create(user *domain.User) error {
 	}
 	r.seq++
 	user.ID = domain.ID("fake-" + string(rune('0'+r.seq)))
+	if user.Role == "" {
+		user.Role = domain.RoleUser
+	}
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now

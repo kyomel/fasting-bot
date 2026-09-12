@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fasting-bot/internal/config"
+	"fasting-bot/internal/domain"
 	"fasting-bot/internal/repository"
 )
 
@@ -28,6 +29,9 @@ const errSaveScheduleFormat = "gagal menyimpan jadwal: %w"
 type FastingUsecase interface {
 	RegisterUser(phone, jid, name string) (string, error)
 	RegisterUserAPI(input RegisterInput) (*RegisterResult, error)
+	Login(input LoginInput) (*LoginResult, error)
+	Authenticate(token string) (*domain.User, error)
+	Logout(token string) error
 	SetName(phone, name string) (string, error)
 	SetSchedule(phone, start, end string) (string, error)
 	GetStatus(phone string) (string, error)
@@ -49,6 +53,7 @@ type fastingUsecase struct {
 	scheduleRepo     repository.ScheduleRepository
 	notificationRepo repository.NotificationRepository
 	badgeRepo        repository.BadgeRepository
+	authSessionRepo  repository.AuthSessionRepository
 }
 
 func NewFastingUsecase(
@@ -56,12 +61,14 @@ func NewFastingUsecase(
 	scheduleRepo repository.ScheduleRepository,
 	notificationRepo repository.NotificationRepository,
 	badgeRepo repository.BadgeRepository,
+	authSessionRepo repository.AuthSessionRepository,
 ) FastingUsecase {
 	return &fastingUsecase{
 		userRepo:         userRepo,
 		scheduleRepo:     scheduleRepo,
 		notificationRepo: notificationRepo,
 		badgeRepo:        badgeRepo,
+		authSessionRepo:  authSessionRepo,
 	}
 }
 

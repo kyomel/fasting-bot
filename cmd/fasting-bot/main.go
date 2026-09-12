@@ -40,9 +40,9 @@ func main() {
 	defer db.Close()
 	fmt.Println("✅ Database initialized")
 
-	userRepo, scheduleRepo, notificationRepo, badgeRepo := newRepositories(db.Conn)
+	userRepo, scheduleRepo, notificationRepo, badgeRepo, authSessionRepo := newRepositories(db.Conn)
 
-	fastingUsecase := usecase.NewFastingUsecase(userRepo, scheduleRepo, notificationRepo, badgeRepo)
+	fastingUsecase := usecase.NewFastingUsecase(userRepo, scheduleRepo, notificationRepo, badgeRepo, authSessionRepo)
 
 	waClient, err := waInfra.NewClient()
 	if err != nil {
@@ -94,9 +94,10 @@ func startAPIServer(fastingUsecase usecase.FastingUsecase) *http.Server {
 // newRepositories wires the PostgreSQL repository set. PostgreSQL is the
 // only supported application database (SQLite remains only for the WhatsApp
 // session store in infrastructure/whatsapp).
-func newRepositories(db *sql.DB) (repository.UserRepository, repository.ScheduleRepository, repository.NotificationRepository, repository.BadgeRepository) {
+func newRepositories(db *sql.DB) (repository.UserRepository, repository.ScheduleRepository, repository.NotificationRepository, repository.BadgeRepository, repository.AuthSessionRepository) {
 	return persistence.NewUserRepositoryPostgres(db),
 		persistence.NewScheduleRepositoryPostgres(db),
 		persistence.NewNotificationRepositoryPostgres(db),
-		persistence.NewBadgeRepositoryPostgres(db)
+		persistence.NewBadgeRepositoryPostgres(db),
+		persistence.NewAuthSessionRepositoryPostgres(db)
 }

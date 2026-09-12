@@ -6,7 +6,10 @@ Go WhatsApp bot for intermittent-fasting tracking (module `fasting-bot`).
 Users register via `/daftar`, start fasts (`/puasa`, presets like `/if-168`,
 `/omad`, `/water-48`), log breaks (`/buka`), and get automatic start/end
 notifications plus stats, streaks, badges, leaderboard. A small REST API
-(`POST /api/v1/users/register`, `GET /healthz`) shares the same usecase layer.
+shares the same usecase layer: public `POST /api/v1/users/register`,
+`POST /api/v1/auth/login`, `GET /healthz`; bearer-protected
+`POST /api/v1/auth/logout`, `GET /api/v1/users/me` (opaque 256-bit tokens,
+SHA-256 hashed in `auth_sessions`, 24h TTL; `users.role` = `user`|`admin`).
 All user-facing bot text is Indonesian with emoji + `*bold*` WhatsApp markup.
 
 ## Architecture & Data Flow
@@ -59,7 +62,8 @@ delivery/whatsapp + delivery/http
   `user_constraint.go` maps pg `23505` to `ErrConflict`.
 - `internal/delivery/whatsapp/` - `command_handler.go` (command switch),
   `scheduler.go` (cron jobs + message builders).
-- `internal/delivery/http/` - `server.go` (REST routes, status-code mapping).
+- `internal/delivery/http/` - `server.go` (REST routes, bearer middleware
+  `requireAuth`/`requireRole`, status-code mapping).
 - `migrations/postgres/` - root copy of goose migrations `00001..00009`
   (mirrors the embedded set; keep both in sync when adding one).
 - `deploy/` - `fasting-bot.service` (systemd), `monitor.sh`
@@ -90,9 +94,11 @@ restart - it does **not** run tests, so run `make test` locally before push.
   `domain.NewID()`; stored as native Postgres UUID).
 - Error handling: sentinel errors, checked with `errors.Is` -
   `repository.ErrNotFound`, `repository.ErrConflict`,
-  `usecase.ErrValidation`. Repos never leak `sql.ErrNoRows`; HTTP maps
-  `ErrValidation` -> 400, `ErrConflict` -> 409. Wrap with `%w`, prefix
-  Indonesian messages (`gagal ...: %w`).
+  `usecase.ErrValidation`, `usecase.ErrInvalidCredentials`,
+  `usecase.ErrUnauthorized`. Repos never leak `sql.ErrNoRows`; HTTP maps
+  `ErrValidation` -> 400, `ErrConflict` -> 409, auth failures -> 401/403
+  (generic messages). Wrap with `%w`, prefix Indonesian messages
+  (`gagal ...: %w`).
 - Vertical slice for new features: domain entity -> repo interface method ->
   Postgres repo impl -> usecase method -> delivery handler case.
   Update the interface fakes in tests when widening an interface.
